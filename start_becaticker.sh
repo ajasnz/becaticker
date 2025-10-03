@@ -26,20 +26,34 @@ if ! command -v python3 &> /dev/null; then
     exit 1
 fi
 
+# Create virtual environment if it doesn't exist
+if [ ! -d "venv" ]; then
+    echo "📦 Creating Python virtual environment..."
+    python3 -m venv venv
+    echo "✅ Virtual environment created"
+fi
+
+# Activate virtual environment
+echo "🔄 Activating virtual environment..."
+source venv/bin/activate
+
+# Upgrade pip in virtual environment
+pip install --upgrade pip > /dev/null 2>&1
+
 # Check if the RGB matrix library is compiled
 if [ ! -f "hzeller/lib/librgbmatrix.a" ]; then
     echo "⚠️  RGB Matrix library not found. Attempting to compile..."
     cd hzeller
-    make build-python3
+    make build-python PYTHON=$(which python3)
     cd ..
     echo "✅ RGB Matrix library compiled successfully"
 fi
 
 # Install Python dependencies if requirements.txt exists
 if [ -f "requirements.txt" ]; then
-    echo "📦 Installing Python dependencies..."
-    pip3 install -r requirements.txt
-    pip3 install -r hzeller/bindings/python/requirements.txt 2>/dev/null || true
+    echo "📦 Installing Python dependencies in virtual environment..."
+    pip install -r requirements.txt
+    pip install -r hzeller/bindings/python/requirements.txt 2>/dev/null || true
     echo "✅ Dependencies installed"
 fi
 
@@ -119,8 +133,8 @@ echo "   Logs will be displayed below:"
 echo "================================================"
 echo ""
 
-# Start Python application with logging
-python3 becaticker.py --log-level INFO 2>&1 | tee -a "logs/becaticker_$(date +%Y%m%d_%H%M%S).log" &
+# Start Python application with logging using virtual environment
+sudo venv/bin/python becaticker.py --log-level INFO 2>&1 | tee -a "logs/becaticker_$(date +%Y%m%d_%H%M%S).log" &
 PYTHON_PID=$!
 
 # Wait for the Python process

@@ -18,9 +18,8 @@ done
 sudo apt-get update
 sudo apt-get upgrade -y
 
-## Make sure we have python3, pip, and git
-sudo apt-get install python3 python3-pip git -y
-sudo pip3 install --upgrade pip
+## Make sure we have python3, venv, and git
+sudo apt-get install python3 python3-venv python3-full git build-essential -y
 
 ## Pull the latest code from the repository
 git pull origin main
@@ -28,15 +27,26 @@ git pull origin main
 ## Make sure the submodules are up to date
 git submodule update --init --recursive
 
+## Create virtual environment if it doesn't exist
+if [ ! -d "venv" ]; then
+    echo "Creating Python virtual environment..."
+    python3 -m venv venv
+fi
+
+## Activate virtual environment
+source venv/bin/activate
+
+## Upgrade pip in virtual environment
+pip install --upgrade pip
+
 ## Compile the LED matrix library
 cd hzeller
-make build-python3 
+make build-python PYTHON=$(which python3)
 cd ..
 
+## Install requirements in virtual environment
+pip install -r requirements.txt
+pip install -r hzeller/bindings/python/requirements.txt
 
-## Install requirements
-sudo pip3 install -r requirements.txt
-sudo pip3 install -r hzeller/bindings/python/requirements.txt
-
-# Run the main application
-sudo python3 becaticker.py
+# Run the main application with sudo but keep the virtual environment
+sudo venv/bin/python becaticker.py

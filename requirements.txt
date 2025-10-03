@@ -4,11 +4,3 @@ requests==2.31.0
 Pillow==10.0.0
 python-dateutil==2.8.2
 pytz==2023.3
-threading
-json
-datetime
-time
-math
-os
-sys
-logging
