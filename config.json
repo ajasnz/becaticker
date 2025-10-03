@@ -1,0 +1,55 @@
+{
+  "department_name": "ENGINEERING",
+  "scrolling_messages": [
+    "Welcome to the Engineering Department!",
+    "Safety first - always wear your PPE",
+    "Team meeting every Thursday at 2 PM",
+    "Check Slack for project updates",
+    "Have a productive day!"
+  ],
+  "calendar_urls": [
+    "https://example.com/engineering-calendar.ics"
+  ],
+  "web_port": 5000,
+  "matrix_options": {
+    "chain1": {
+      "rows": 64,
+      "cols": 64,
+      "chain_length": 4,
+      "parallel": 1,
+      "brightness": 75,
+      "gpio_mapping": "adafruit-hat"
+    },
+    "chain2": {
+      "rows": 64,
+      "cols": 64,
+      "chain_length": 4,
+      "parallel": 1,
+      "brightness": 75,
+      "gpio_mapping": "adafruit-hat"
+    }
+  },
+  "display_settings": {
+    "text_color": [
+      255,
+      255,
+      255
+    ],
+    "clock_color": [
+      0,
+      255,
+      0
+    ],
+    "background_color": [
+      0,
+      0,
+      0
+    ],
+    "scroll_speed": 0.05,
+    "calendar_refresh_minutes": 30
+  },
+  "arcade_mode": {
+    "enabled": true,
+    "trigger_command": "/usr/bin/emulationstation"
+  }
+}

@@ -1,0 +1,18 @@
+[Unit]
+Description=BecaTicker LED Matrix Display Service
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5
+User=root
+WorkingDirectory=/home/pi/becaticker
+ExecStart=/home/pi/becaticker/becaticker.sh
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=becaticker
+
+[Install]
+WantedBy=multi-user.target
