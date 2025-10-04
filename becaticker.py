@@ -266,6 +266,10 @@ class TextDisplay:
         self.small_font = graphics.Font()
         self.small_font.LoadFont(os.path.join("hzeller", "fonts", "6x10.bdf"))
 
+        # Font cache for dynamic font loading
+        self.font_cache = {}
+        self._load_default_fonts()
+
         # Colors will be loaded dynamically in update_display()
 
         # Scrolling state
@@ -277,6 +281,63 @@ class TextDisplay:
         self.calendar_scroll_pos = 0
         self.current_event_index = 0
         self.event_change_time = time.time()
+
+    def _load_default_fonts(self):
+        """Pre-load commonly used fonts into cache."""
+        default_fonts = [
+            "4x6.bdf",
+            "5x7.bdf",
+            "5x8.bdf",
+            "6x9.bdf",
+            "6x10.bdf",
+            "6x12.bdf",
+            "7x13.bdf",
+            "7x13B.bdf",
+            "8x13.bdf",
+            "8x13B.bdf",
+            "9x15.bdf",
+            "9x15B.bdf",
+            "9x18.bdf",
+            "9x18B.bdf",
+            "10x20.bdf",
+            "helvR12.bdf",
+            "texgyre-27.bdf",
+            "tom-thumb.bdf",
+        ]
+
+        for font_name in default_fonts:
+            try:
+                font_path = os.path.join("hzeller", "fonts", font_name)
+                if os.path.exists(font_path):
+                    font = graphics.Font()
+                    font.LoadFont(font_path)
+                    self.font_cache[font_name] = font
+                    logger.debug(f"Loaded font: {font_name}")
+            except Exception as e:
+                logger.warning(f"Failed to load font {font_name}: {e}")
+
+    def _get_font(self, font_name: str = None):
+        """Get font object, loading it if necessary."""
+        if not font_name or font_name == "default":
+            return self.text_font
+
+        if font_name in self.font_cache:
+            return self.font_cache[font_name]
+
+        # Try to load the font if not in cache
+        try:
+            font_path = os.path.join("hzeller", "fonts", font_name)
+            if os.path.exists(font_path):
+                font = graphics.Font()
+                font.LoadFont(font_path)
+                self.font_cache[font_name] = font
+                logger.info(f"Dynamically loaded font: {font_name}")
+                return font
+        except Exception as e:
+            logger.error(f"Failed to load font {font_name}: {e}")
+
+        # Fall back to default font
+        return self.text_font
 
     def _get_colors(self):
         """Get current colors from configuration."""
@@ -339,24 +400,48 @@ class TextDisplay:
 
                 elif line_type == "department":
                     dept_name = self.config.get("department_name", "DEPARTMENT")
+                    line_font = self._get_font(line_config.get("font"))
+                    line_text_size = line_config.get("text_size", 1)
                     self._draw_centered_text(
-                        dept_name, self.title_font, colors["department"], y_position
+                        dept_name,
+                        line_font,
+                        colors["department"],
+                        y_position,
+                        line_text_size,
                     )
 
                 elif line_type == "message":
+                    line_font = self._get_font(line_config.get("font"))
+                    line_text_size = line_config.get("text_size", 1)
                     self._draw_scrolling_message(
-                        y_position, colors["text"], line_scroll_speed
+                        y_position,
+                        colors["text"],
+                        line_scroll_speed,
+                        line_font,
+                        line_text_size,
                     )
 
                 elif line_type == "calendar":
+                    line_font = self._get_font(line_config.get("font"))
+                    line_text_size = line_config.get("text_size", 1)
                     self._draw_calendar_events(
-                        y_position, colors["calendar"], line_scroll_speed
+                        y_position,
+                        colors["calendar"],
+                        line_scroll_speed,
+                        line_font,
+                        line_text_size,
                     )
 
                 elif line_type == "static":
                     if line_content:
+                        line_font = self._get_font(line_config.get("font"))
+                        line_text_size = line_config.get("text_size", 1)
                         self._draw_centered_text(
-                            line_content, self.text_font, colors["text"], y_position
+                            line_content,
+                            line_font,
+                            colors["text"],
+                            y_position,
+                            line_text_size,
                         )
 
                 y_position += line_spacing
@@ -374,15 +459,38 @@ class TextDisplay:
                 )
 
     def _draw_centered_text(
-        self, text: str, font: graphics.Font, color: graphics.Color, y: int
+        self,
+        text: str,
+        font: graphics.Font,
+        color: graphics.Color,
+        y: int,
+        text_size: int = 1,
     ) -> None:
-        """Draw centered text at specified y position."""
-        text_width = sum([font.CharacterWidth(ord(c)) for c in text])
-        x = (self.canvas.width - text_width) // 2
-        graphics.DrawText(self.canvas, font, x, y, color, text)
+        """Draw centered text at specified y position with optional scaling."""
+        if text_size > 1:
+            # For scaled text, calculate width differently and draw multiple times
+            char_width = font.CharacterWidth(ord("A"))  # Use average character width
+            scaled_width = len(text) * char_width * text_size
+            x = (self.canvas.width - scaled_width) // 2
+
+            # Draw text with scaling by drawing multiple offset copies
+            for scale_x in range(text_size):
+                for scale_y in range(text_size):
+                    graphics.DrawText(
+                        self.canvas, font, x + scale_x, y + scale_y, color, text
+                    )
+        else:
+            text_width = sum([font.CharacterWidth(ord(c)) for c in text])
+            x = (self.canvas.width - text_width) // 2
+            graphics.DrawText(self.canvas, font, x, y, color, text)
 
     def _draw_scrolling_message(
-        self, y: int, color: graphics.Color = None, custom_scroll_speed: float = None
+        self,
+        y: int,
+        color: graphics.Color = None,
+        custom_scroll_speed: float = None,
+        font: graphics.Font = None,
+        text_size: int = 1,
     ) -> None:
         """Draw scrolling message at specified y position."""
         messages = self.config.get("scrolling_messages", ["No messages configured"])
@@ -394,17 +502,34 @@ class TextDisplay:
             text_color = self.config.get("display_settings.text_color", [255, 255, 255])
             color = graphics.Color(*text_color)
 
+        # Use provided font or default
+        if font is None:
+            font = self.text_font
+
         current_message = messages[self.current_message_index]
 
-        # Draw scrolling text
-        text_len = graphics.DrawText(
-            self.canvas,
-            self.text_font,
-            self.scroll_pos,
-            y,
-            color,
-            current_message,
-        )
+        # Draw scrolling text with scaling support
+        if text_size > 1:
+            # Draw text with scaling by drawing multiple offset copies
+            for scale_x in range(text_size):
+                for scale_y in range(text_size):
+                    text_len = graphics.DrawText(
+                        self.canvas,
+                        font,
+                        self.scroll_pos + scale_x,
+                        y + scale_y,
+                        color,
+                        current_message,
+                    )
+        else:
+            text_len = graphics.DrawText(
+                self.canvas,
+                font,
+                self.scroll_pos,
+                y,
+                color,
+                current_message,
+            )
 
         # Update scroll position - use custom speed if provided, otherwise use global setting
         if custom_scroll_speed is not None:
@@ -426,7 +551,12 @@ class TextDisplay:
                 self.scroll_pos = -text_len - 10
 
     def _draw_calendar_events(
-        self, y: int, color: graphics.Color = None, custom_scroll_speed: float = None
+        self,
+        y: int,
+        color: graphics.Color = None,
+        custom_scroll_speed: float = None,
+        font: graphics.Font = None,
+        text_size: int = 1,
     ) -> None:
         """Draw scrolling calendar events."""
         events = self.calendar_manager.fetch_events()
@@ -438,15 +568,32 @@ class TextDisplay:
             )
             color = graphics.Color(*calendar_color)
 
+        # Use provided font or default
+        if font is None:
+            font = self.small_font
+
         if not events:
-            graphics.DrawText(
-                self.canvas,
-                self.small_font,
-                2,
-                y,
-                color,
-                "No upcoming events",
-            )
+            if text_size > 1:
+                # Draw "No upcoming events" with scaling
+                for scale_x in range(text_size):
+                    for scale_y in range(text_size):
+                        graphics.DrawText(
+                            self.canvas,
+                            font,
+                            2 + scale_x,
+                            y + scale_y,
+                            color,
+                            "No upcoming events",
+                        )
+            else:
+                graphics.DrawText(
+                    self.canvas,
+                    font,
+                    2,
+                    y,
+                    color,
+                    "No upcoming events",
+                )
             return
 
         # Change event every 12 seconds
@@ -465,15 +612,28 @@ class TextDisplay:
 
         event_text = f"{start_str}: {current_event['summary']}"
 
-        # Draw scrolling event text
-        text_len = graphics.DrawText(
-            self.canvas,
-            self.small_font,
-            self.calendar_scroll_pos,
-            y,
-            color,
-            event_text,
-        )
+        # Draw scrolling event text with scaling support
+        if text_size > 1:
+            # Draw text with scaling by drawing multiple offset copies
+            for scale_x in range(text_size):
+                for scale_y in range(text_size):
+                    text_len = graphics.DrawText(
+                        self.canvas,
+                        font,
+                        self.calendar_scroll_pos + scale_x,
+                        y + scale_y,
+                        color,
+                        event_text,
+                    )
+        else:
+            text_len = graphics.DrawText(
+                self.canvas,
+                font,
+                self.calendar_scroll_pos,
+                y,
+                color,
+                event_text,
+            )
 
         # Update scroll position - use custom speed if provided, otherwise use global setting
         if custom_scroll_speed is not None:

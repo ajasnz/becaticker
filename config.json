@@ -15,7 +15,7 @@
     "chain1": {
       "rows": 64,
       "cols": 64,
-      "chain_length": 2,
+      "chain_length": 4,
       "parallel": 1,
       "brightness": 40,
       "gpio_mapping": "regular",
@@ -49,7 +49,7 @@
       0,
       0
     ],
-    "scroll_speed": 2,
+    "scroll_speed": 1,
     "calendar_refresh_minutes": 30
   },
   "arcade_mode": {

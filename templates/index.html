@@ -912,24 +912,52 @@
                                 <option value="disabled" ${line.type === 'disabled' ? 'selected' : ''}>Disabled</option>
                             </select>
                         </div>
-                        ${needsContentField ? `
-                        <div class="input-group">
+                        <div class="input-group" style="display: ${needsContentField ? 'block' : 'none'}">
                             <label>Content:</label>
                             <input type="text" class="line-content" placeholder="Text content..." value="${line.content || ''}" onchange="updateLineConfig()">
                         </div>
-                        ` : ''}
+                        <div class="input-group">
+                            <label>Font:</label>
+                            <select class="line-font" onchange="updateLineConfig()">
+                                <option value="4x6.bdf" ${(line.font || 'default') === '4x6.bdf' ? 'selected' : ''}>Tiny (4x6)</option>
+                                <option value="5x7.bdf" ${(line.font || 'default') === '5x7.bdf' ? 'selected' : ''}>Extra Small (5x7)</option>
+                                <option value="5x8.bdf" ${(line.font || 'default') === '5x8.bdf' ? 'selected' : ''}>Extra Small (5x8)</option>
+                                <option value="6x9.bdf" ${(line.font || 'default') === '6x9.bdf' ? 'selected' : ''}>Small (6x9)</option>
+                                <option value="6x10.bdf" ${(line.font || 'default') === '6x10.bdf' ? 'selected' : ''}>Small (6x10)</option>
+                                <option value="6x12.bdf" ${(line.font || 'default') === '6x12.bdf' ? 'selected' : ''}>Small (6x12)</option>
+                                <option value="7x13.bdf" ${(line.font || 'default') === '7x13.bdf' || (line.font || 'default') === 'default' ? 'selected' : ''}>Medium (7x13)</option>
+                                <option value="7x13B.bdf" ${(line.font || 'default') === '7x13B.bdf' ? 'selected' : ''}>Medium Bold (7x13B)</option>
+                                <option value="8x13.bdf" ${(line.font || 'default') === '8x13.bdf' ? 'selected' : ''}>Large (8x13)</option>
+                                <option value="8x13B.bdf" ${(line.font || 'default') === '8x13B.bdf' ? 'selected' : ''}>Large Bold (8x13B)</option>
+                                <option value="9x15.bdf" ${(line.font || 'default') === '9x15.bdf' ? 'selected' : ''}>Extra Large (9x15)</option>
+                                <option value="9x15B.bdf" ${(line.font || 'default') === '9x15B.bdf' ? 'selected' : ''}>Extra Large Bold (9x15B)</option>
+                                <option value="9x18.bdf" ${(line.font || 'default') === '9x18.bdf' ? 'selected' : ''}>Huge (9x18)</option>
+                                <option value="9x18B.bdf" ${(line.font || 'default') === '9x18B.bdf' ? 'selected' : ''}>Huge Bold (9x18B)</option>
+                                <option value="10x20.bdf" ${(line.font || 'default') === '10x20.bdf' ? 'selected' : ''}>Giant (10x20)</option>
+                                <option value="helvR12.bdf" ${(line.font || 'default') === 'helvR12.bdf' ? 'selected' : ''}>Helvetica (12pt)</option>
+                                <option value="texgyre-27.bdf" ${(line.font || 'default') === 'texgyre-27.bdf' ? 'selected' : ''}>TeX Gyre (27pt)</option>
+                                <option value="tom-thumb.bdf" ${(line.font || 'default') === 'tom-thumb.bdf' ? 'selected' : ''}>Tom Thumb (3x5)</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Text Size Scale:</label>
+                            <select class="line-text-size" onchange="updateLineConfig()">
+                                <option value="1" ${(line.text_size || 1) == 1 ? 'selected' : ''}>1x (Normal)</option>
+                                <option value="2" ${(line.text_size || 1) == 2 ? 'selected' : ''}>2x (Double)</option>
+                                <option value="3" ${(line.text_size || 1) == 3 ? 'selected' : ''}>3x (Triple)</option>
+                                <option value="4" ${(line.text_size || 1) == 4 ? 'selected' : ''}>4x (Quadruple)</option>
+                            </select>
+                        </div>
                         <div class="input-group">
                             <label>Line Spacing:</label>
                             <input type="range" class="line-spacing" min="5" max="40" value="${line.spacing || 20}" onchange="updateLineConfig()">
                             <span class="spacing-value">${line.spacing || 20}px</span>
                         </div>
-                        ${isScrollingType ? `
-                        <div class="input-group">
+                        <div class="input-group" style="display: ${isScrollingType ? 'block' : 'none'}">
                             <label>Scroll Speed:</label>
                             <input type="range" class="line-scroll-speed" min="0.005" max="2.0" step="0.005" value="${line.scroll_speed || 0.1}" onchange="updateLineConfig()">
                             <span class="scroll-speed-value">${line.scroll_speed || 0.1}</span>
                         </div>
-                        ` : ''}
                         <div class="input-group">
                             <label>Background Color:</label>
                             <div class="color-control">
@@ -1026,9 +1054,31 @@
         }
 
         function updateLineConfig() {
-            // Update display values for range inputs
+            // Update display values for range inputs and handle dynamic field visibility
             const lineConfigs = document.querySelectorAll('.line-config');
             lineConfigs.forEach(line => {
+                const typeSelect = line.querySelector('.line-type');
+                const currentType = typeSelect ? typeSelect.value : '';
+
+                // Handle content field visibility for static text
+                const contentInput = line.querySelector('.line-content');
+                if (contentInput) {
+                    const contentGroup = contentInput.closest('.input-group');
+                    if (contentGroup) {
+                        contentGroup.style.display = currentType === 'static' ? 'block' : 'none';
+                    }
+                }
+
+                // Handle scroll speed visibility for scrolling types
+                const scrollSpeedInput = line.querySelector('.line-scroll-speed');
+                if (scrollSpeedInput) {
+                    const scrollSpeedGroup = scrollSpeedInput.closest('.input-group');
+                    if (scrollSpeedGroup) {
+                        const isScrollingType = currentType === 'message' || currentType === 'calendar';
+                        scrollSpeedGroup.style.display = isScrollingType ? 'block' : 'none';
+                    }
+                }
+
                 const spacingRange = line.querySelector('.line-spacing');
                 const spacingValue = line.querySelector('.spacing-value');
                 if (spacingRange && spacingValue) {
@@ -1105,10 +1155,51 @@
                             <option value="disabled" selected>Disabled</option>
                         </select>
                     </div>
+                    <div class="input-group" style="display: none">
+                        <label>Content:</label>
+                        <input type="text" class="line-content" placeholder="Text content..." value="" onchange="updateLineConfig()">
+                    </div>
+                    <div class="input-group">
+                        <label>Font:</label>
+                        <select class="line-font" onchange="updateLineConfig()">
+                            <option value="4x6.bdf">Tiny (4x6)</option>
+                            <option value="5x7.bdf">Extra Small (5x7)</option>
+                            <option value="5x8.bdf">Extra Small (5x8)</option>
+                            <option value="6x9.bdf">Small (6x9)</option>
+                            <option value="6x10.bdf">Small (6x10)</option>
+                            <option value="6x12.bdf">Small (6x12)</option>
+                            <option value="7x13.bdf" selected>Medium (7x13)</option>
+                            <option value="7x13B.bdf">Medium Bold (7x13B)</option>
+                            <option value="8x13.bdf">Large (8x13)</option>
+                            <option value="8x13B.bdf">Large Bold (8x13B)</option>
+                            <option value="9x15.bdf">Extra Large (9x15)</option>
+                            <option value="9x15B.bdf">Extra Large Bold (9x15B)</option>
+                            <option value="9x18.bdf">Huge (9x18)</option>
+                            <option value="9x18B.bdf">Huge Bold (9x18B)</option>
+                            <option value="10x20.bdf">Giant (10x20)</option>
+                            <option value="helvR12.bdf">Helvetica (12pt)</option>
+                            <option value="texgyre-27.bdf">TeX Gyre (27pt)</option>
+                            <option value="tom-thumb.bdf">Tom Thumb (3x5)</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Text Size Scale:</label>
+                        <select class="line-text-size" onchange="updateLineConfig()">
+                            <option value="1" selected>1x (Normal)</option>
+                            <option value="2">2x (Double)</option>
+                            <option value="3">3x (Triple)</option>
+                            <option value="4">4x (Quadruple)</option>
+                        </select>
+                    </div>
                     <div class="input-group">
                         <label>Line Spacing:</label>
                         <input type="range" class="line-spacing" min="5" max="40" value="20" onchange="updateLineConfig()">
                         <span class="spacing-value">20px</span>
+                    </div>
+                    <div class="input-group" style="display: none">
+                        <label>Scroll Speed:</label>
+                        <input type="range" class="line-scroll-speed" min="0.005" max="2.0" step="0.005" value="0.1" onchange="updateLineConfig()">
+                        <span class="scroll-speed-value">0.1</span>
                     </div>
                     <div class="input-group">
                         <label>Background Color:</label>
@@ -1177,6 +1268,8 @@
                     const spacingField = line.querySelector('.line-spacing');
                     const scrollSpeedField = line.querySelector('.line-scroll-speed');
                     const bgColorField = line.querySelector('.line-bg-color');
+                    const fontField = line.querySelector('.line-font');
+                    const textSizeField = line.querySelector('.line-text-size');
 
                     const lineConfig = {
                         type: lineType,
@@ -1191,6 +1284,16 @@
                     // Include scroll speed for scrolling line types
                     if (scrollSpeedField && (lineType === 'message' || lineType === 'calendar')) {
                         lineConfig.scroll_speed = parseFloat(scrollSpeedField.value);
+                    }
+
+                    // Include font selection
+                    if (fontField && fontField.value && fontField.value !== 'default') {
+                        lineConfig.font = fontField.value;
+                    }
+
+                    // Include text size scale
+                    if (textSizeField && textSizeField.value && textSizeField.value !== '1') {
+                        lineConfig.text_size = parseInt(textSizeField.value);
                     }
 
                     // Include background color if set and not black
