@@ -88,7 +88,7 @@ class Config:
                 "calendar_color": [255, 255, 0],
                 "clock_color": [0, 255, 0],
                 "background_color": [0, 0, 0],
-                "scroll_speed": 1.0,
+                "scroll_speed": 0.1,
                 "calendar_refresh_minutes": 30,
             },
             "display_lines": [],
@@ -266,11 +266,7 @@ class TextDisplay:
         self.small_font = graphics.Font()
         self.small_font.LoadFont(os.path.join("hzeller", "fonts", "6x10.bdf"))
 
-        # Colors
-        text_color = self.config.get("display_settings.text_color", [255, 255, 255])
-        self.text_color = graphics.Color(*text_color)
-        self.title_color = graphics.Color(255, 255, 0)  # Yellow for title
-        self.event_color = graphics.Color(0, 255, 255)  # Cyan for events
+        # Colors will be loaded dynamically in update_display()
 
         # Scrolling state
         self.scroll_pos = 0
@@ -282,19 +278,70 @@ class TextDisplay:
         self.current_event_index = 0
         self.event_change_time = time.time()
 
+    def _get_colors(self):
+        """Get current colors from configuration."""
+        text_color = self.config.get("display_settings.text_color", [255, 255, 255])
+        dept_color = self.config.get("display_settings.department_color", [0, 255, 255])
+        calendar_color = self.config.get(
+            "display_settings.calendar_color", [255, 255, 0]
+        )
+
+        return {
+            "text": graphics.Color(*text_color),
+            "department": graphics.Color(*dept_color),
+            "calendar": graphics.Color(*calendar_color),
+        }
+
     def update_display(self) -> None:
         """Update the text display with current information."""
         self.canvas.Clear()
 
-        # Row 1: Department name (static, centered)
-        dept_name = self.config.get("department_name", "DEPARTMENT")
-        self._draw_centered_text(dept_name, self.title_font, self.title_color, 12)
+        # Get current colors
+        colors = self._get_colors()
 
-        # Row 2: Scrolling messages
-        self._draw_scrolling_message(32)
+        # Get configurable display lines
+        display_lines = self.config.get("display_lines", [])
 
-        # Row 3: Calendar events
-        self._draw_calendar_events(52)
+        # If no display lines configured, use default layout
+        if not display_lines:
+            # Default layout for backward compatibility
+            dept_name = self.config.get("department_name", "DEPARTMENT")
+            self._draw_centered_text(
+                dept_name, self.title_font, colors["department"], 12
+            )
+            self._draw_scrolling_message(32, colors["text"])
+            self._draw_calendar_events(52, colors["calendar"])
+        else:
+            # Use configurable display lines
+            y_position = 12  # Start at top
+            line_height = 20  # Spacing between lines
+
+            for line_config in display_lines:
+                line_type = line_config.get("type", "disabled")
+                line_content = line_config.get("content", "")
+
+                if line_type == "disabled":
+                    continue
+
+                if line_type == "department":
+                    dept_name = self.config.get("department_name", "DEPARTMENT")
+                    self._draw_centered_text(
+                        dept_name, self.title_font, colors["department"], y_position
+                    )
+
+                elif line_type == "message":
+                    self._draw_scrolling_message(y_position, colors["text"])
+
+                elif line_type == "calendar":
+                    self._draw_calendar_events(y_position, colors["calendar"])
+
+                elif line_type == "static":
+                    if line_content:
+                        self._draw_centered_text(
+                            line_content, self.text_font, colors["text"], y_position
+                        )
+
+                y_position += line_height
 
         # Swap buffers
         self.canvas = self.matrix.SwapOnVSync(self.canvas)
@@ -307,11 +354,16 @@ class TextDisplay:
         x = (self.canvas.width - text_width) // 2
         graphics.DrawText(self.canvas, font, x, y, color, text)
 
-    def _draw_scrolling_message(self, y: int) -> None:
+    def _draw_scrolling_message(self, y: int, color: graphics.Color = None) -> None:
         """Draw scrolling message at specified y position."""
         messages = self.config.get("scrolling_messages", ["No messages configured"])
         if not messages:
             return
+
+        # Use provided color or default
+        if color is None:
+            text_color = self.config.get("display_settings.text_color", [255, 255, 255])
+            color = graphics.Color(*text_color)
 
         current_message = messages[self.current_message_index]
 
@@ -321,13 +373,13 @@ class TextDisplay:
             self.text_font,
             self.scroll_pos,
             y,
-            self.text_color,
+            color,
             current_message,
         )
 
         # Update scroll position
-        scroll_speed = self.config.get("display_settings.scroll_speed", 0.05)
-        self.scroll_pos -= 1
+        scroll_speed = self.config.get("display_settings.scroll_speed", 0.1)
+        self.scroll_pos -= int(scroll_speed * 10)  # Convert to pixel movement per frame
 
         # Change message when text completely scrolled off screen + 2 second pause
         if self.scroll_pos + text_len < 0:
@@ -341,16 +393,24 @@ class TextDisplay:
             elif self.scroll_pos + text_len < -10:
                 self.scroll_pos = -text_len - 10
 
-    def _draw_calendar_events(self, y: int) -> None:
+    def _draw_calendar_events(self, y: int, color: graphics.Color = None) -> None:
         """Draw scrolling calendar events."""
         events = self.calendar_manager.fetch_events()
+
+        # Use provided color or default
+        if color is None:
+            calendar_color = self.config.get(
+                "display_settings.calendar_color", [255, 255, 0]
+            )
+            color = graphics.Color(*calendar_color)
+
         if not events:
             graphics.DrawText(
                 self.canvas,
                 self.small_font,
                 2,
                 y,
-                self.event_color,
+                color,
                 "No upcoming events",
             )
             return
@@ -377,13 +437,15 @@ class TextDisplay:
             self.small_font,
             self.calendar_scroll_pos,
             y,
-            self.event_color,
+            color,
             event_text,
         )
 
         # Update scroll position
-        scroll_speed = self.config.get("display_settings.scroll_speed", 0.05)
-        self.calendar_scroll_pos -= 1
+        scroll_speed = self.config.get("display_settings.scroll_speed", 0.1)
+        self.calendar_scroll_pos -= int(
+            scroll_speed * 10
+        )  # Convert to pixel movement per frame
 
         # Reset scroll when text completely off screen
         if self.calendar_scroll_pos + text_len < 0:
@@ -657,8 +719,10 @@ class BecaTicker:
                 if "display_settings" in new_config:
                     display_settings = new_config["display_settings"]
                     for key, value in display_settings.items():
-                        self.config.set(key, value)
-                        logger.info(f"Updated display setting {key}: {value}")
+                        self.config.set(f"display_settings.{key}", value)
+                        logger.info(
+                            f"Updated display setting display_settings.{key}: {value}"
+                        )
 
                 # Handle display lines configuration
                 if "display_lines" in new_config:
