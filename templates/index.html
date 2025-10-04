@@ -317,7 +317,7 @@
 
         .color-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 15px;
             margin-bottom: 20px;
         }
@@ -325,33 +325,54 @@
         .color-control {
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 10px;
+            gap: 8px;
+            padding: 8px;
             background: #f8f9fa;
             border-radius: 5px;
             border: 1px solid #dee2e6;
+            min-width: 0;
+            /* Prevent flex overflow */
         }
 
         .color-control label {
             font-weight: 500;
-            min-width: 80px;
+            min-width: 60px;
+            font-size: 13px;
+            flex-shrink: 0;
         }
 
         .color-control input[type="color"] {
-            width: 40px;
-            height: 40px;
+            width: 35px;
+            height: 35px;
             border: none;
-            border-radius: 5px;
+            border-radius: 4px;
             cursor: pointer;
+            flex-shrink: 0;
         }
 
         .color-control input[type="text"] {
             flex: 1;
-            padding: 5px 8px;
+            min-width: 60px;
+            padding: 4px 6px;
             border: 1px solid #ced4da;
             border-radius: 3px;
             font-family: monospace;
-            font-size: 12px;
+            font-size: 11px;
+        }
+
+        .color-control button {
+            flex-shrink: 0;
+            padding: 4px 8px;
+            font-size: 11px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        .color-control button:hover {
+            background: #5a6268;
         }
 
         .line-config {
@@ -396,6 +417,52 @@
 
         .line-controls button:hover {
             opacity: 0.8;
+        }
+
+        .line-settings {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        .line-settings .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .line-settings .input-group label {
+            font-size: 12px;
+            font-weight: 500;
+            color: #495057;
+        }
+
+        .line-settings input[type="range"] {
+            width: 100%;
+        }
+
+        .line-settings .color-control {
+            flex-direction: row;
+            padding: 6px;
+            gap: 6px;
+        }
+
+        .line-settings .color-control input[type="color"] {
+            width: 30px;
+            height: 30px;
+        }
+
+        .line-settings .color-control input[type="text"] {
+            width: 80px;
+            font-size: 10px;
+        }
+
+        .spacing-value,
+        .scroll-speed-value {
+            font-size: 11px;
+            color: #6c757d;
+            font-weight: 500;
         }
 
         .line-controls .move-up {
@@ -821,19 +888,57 @@
                 const lineDiv = document.createElement('div');
                 lineDiv.className = 'line-config';
                 lineDiv.setAttribute('data-line', index);
+                const needsContentField = line.type === 'static';
+                const isScrollingType = line.type === 'message' || line.type === 'calendar';
+
                 lineDiv.innerHTML = `
-                    <label>Line ${index + 1}:</label>
-                    <select class="line-type" onchange="updateLineConfig()">
-                        <option value="department" ${line.type === 'department' ? 'selected' : ''}>Department Name</option>
-                        <option value="message" ${line.type === 'message' ? 'selected' : ''}>Scrolling Message</option>
-                        <option value="calendar" ${line.type === 'calendar' ? 'selected' : ''}>Calendar Event</option>
-                        <option value="static" ${line.type === 'static' ? 'selected' : ''}>Static Text</option>
-                        <option value="disabled" ${line.type === 'disabled' ? 'selected' : ''}>Disabled</option>
-                    </select>
-                    <input type="text" class="line-content" placeholder="Content..." value="${line.content || ''}" onchange="updateLineConfig()">
-                    <button onclick="moveLineUp(${index})">↑</button>
-                    <button onclick="moveLineDown(${index})">↓</button>
-                    <button onclick="removeLine(${index})">✕</button>
+                    <div class="line-header">
+                        <label>Line ${index + 1}:</label>
+                        <div class="line-controls">
+                            <button onclick="moveLineUp(${index})">↑</button>
+                            <button onclick="moveLineDown(${index})">↓</button>
+                            <button onclick="removeLine(${index})">✕</button>
+                        </div>
+                    </div>
+                    <div class="line-settings">
+                        <div class="input-group">
+                            <label>Type:</label>
+                            <select class="line-type" onchange="updateLineConfig()">
+                                <option value="department" ${line.type === 'department' ? 'selected' : ''}>Department Name</option>
+                                <option value="message" ${line.type === 'message' ? 'selected' : ''}>Scrolling Message</option>
+                                <option value="calendar" ${line.type === 'calendar' ? 'selected' : ''}>Calendar Event</option>
+                                <option value="static" ${line.type === 'static' ? 'selected' : ''}>Static Text</option>
+                                <option value="spacer" ${line.type === 'spacer' ? 'selected' : ''}>Spacer</option>
+                                <option value="disabled" ${line.type === 'disabled' ? 'selected' : ''}>Disabled</option>
+                            </select>
+                        </div>
+                        ${needsContentField ? `
+                        <div class="input-group">
+                            <label>Content:</label>
+                            <input type="text" class="line-content" placeholder="Text content..." value="${line.content || ''}" onchange="updateLineConfig()">
+                        </div>
+                        ` : ''}
+                        <div class="input-group">
+                            <label>Line Spacing:</label>
+                            <input type="range" class="line-spacing" min="5" max="40" value="${line.spacing || 20}" onchange="updateLineConfig()">
+                            <span class="spacing-value">${line.spacing || 20}px</span>
+                        </div>
+                        ${isScrollingType ? `
+                        <div class="input-group">
+                            <label>Scroll Speed:</label>
+                            <input type="range" class="line-scroll-speed" min="0.005" max="2.0" step="0.005" value="${line.scroll_speed || 0.1}" onchange="updateLineConfig()">
+                            <span class="scroll-speed-value">${line.scroll_speed || 0.1}</span>
+                        </div>
+                        ` : ''}
+                        <div class="input-group">
+                            <label>Background Color:</label>
+                            <div class="color-control">
+                                <input type="color" class="line-bg-color" value="${line.background_color ? rgbToHex(...line.background_color) : '#000000'}" onchange="updateLineConfig()">
+                                <input type="text" class="line-bg-color-hex" value="${line.background_color ? rgbToHex(...line.background_color) : '#000000'}" onchange="updateLineConfig()" maxlength="7">
+                                <button type="button" class="clear-bg-color" onclick="clearBackgroundColor(${index})">Clear</button>
+                            </div>
+                        </div>
+                    </div>
                 `;
                 container.appendChild(lineDiv);
             });
@@ -921,7 +1026,44 @@
         }
 
         function updateLineConfig() {
+            // Update display values for range inputs
+            const lineConfigs = document.querySelectorAll('.line-config');
+            lineConfigs.forEach(line => {
+                const spacingRange = line.querySelector('.line-spacing');
+                const spacingValue = line.querySelector('.spacing-value');
+                if (spacingRange && spacingValue) {
+                    spacingValue.textContent = spacingRange.value + 'px';
+                }
+
+                const scrollSpeedRange = line.querySelector('.line-scroll-speed');
+                const scrollSpeedValue = line.querySelector('.scroll-speed-value');
+                if (scrollSpeedRange && scrollSpeedValue) {
+                    scrollSpeedValue.textContent = scrollSpeedRange.value;
+                }
+
+                // Sync color picker and hex input
+                const colorPicker = line.querySelector('.line-bg-color');
+                const colorHex = line.querySelector('.line-bg-color-hex');
+                if (colorPicker && colorHex) {
+                    if (colorPicker.value !== colorHex.value) {
+                        colorHex.value = colorPicker.value;
+                    }
+                }
+            });
+
             saveAllSettings();
+        }
+
+        function clearBackgroundColor(lineIndex) {
+            const container = document.getElementById('display-lines');
+            const line = container.children[lineIndex];
+            if (line) {
+                const colorPicker = line.querySelector('.line-bg-color');
+                const colorHex = line.querySelector('.line-bg-color-hex');
+                if (colorPicker) colorPicker.value = '#000000';
+                if (colorHex) colorHex.value = '#000000';
+                updateLineConfig();
+            }
         }
 
         function addDisplayLine() {
@@ -930,19 +1072,53 @@
             const newLine = document.createElement('div');
             newLine.className = 'line-config';
             newLine.setAttribute('data-line', lineCount);
+
+            const newLineConfig = {
+                type: 'disabled',
+                spacing: 20,
+                scroll_speed: 0.1,
+                background_color: null
+            };
+
+            // Use the same template generation logic as loadDisplayLines
+            const needsContentField = newLineConfig.type === 'static';
+            const isScrollingType = newLineConfig.type === 'message' || newLineConfig.type === 'calendar';
+
             newLine.innerHTML = `
-                <label>Line ${lineCount + 1}:</label>
-                <select class="line-type" onchange="updateLineConfig()">
-                    <option value="department">Department Name</option>
-                    <option value="message">Scrolling Message</option>
-                    <option value="calendar">Calendar Event</option>
-                    <option value="static">Static Text</option>
-                    <option value="disabled" selected>Disabled</option>
-                </select>
-                <input type="text" class="line-content" placeholder="Content..." onchange="updateLineConfig()">
-                <button onclick="moveLineUp(${lineCount})">↑</button>
-                <button onclick="moveLineDown(${lineCount})">↓</button>
-                <button onclick="removeLine(${lineCount})">✕</button>
+                <div class="line-header">
+                    <label>Line ${lineCount + 1}:</label>
+                    <div class="line-controls">
+                        <button onclick="moveLineUp(${lineCount})">↑</button>
+                        <button onclick="moveLineDown(${lineCount})">↓</button>
+                        <button onclick="removeLine(${lineCount})">✕</button>
+                    </div>
+                </div>
+                <div class="line-settings">
+                    <div class="input-group">
+                        <label>Type:</label>
+                        <select class="line-type" onchange="updateLineConfig()">
+                            <option value="department">Department Name</option>
+                            <option value="message">Scrolling Message</option>
+                            <option value="calendar">Calendar Event</option>
+                            <option value="static">Static Text</option>
+                            <option value="spacer">Spacer</option>
+                            <option value="disabled" selected>Disabled</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Line Spacing:</label>
+                        <input type="range" class="line-spacing" min="5" max="40" value="20" onchange="updateLineConfig()">
+                        <span class="spacing-value">20px</span>
+                    </div>
+                    <div class="input-group">
+                        <label>Background Color:</label>
+                        <div class="color-control">
+                            <input type="color" class="line-bg-color" value="#000000" onchange="updateLineConfig()">
+                            <input type="text" class="line-bg-color-hex" value="#000000" onchange="updateLineConfig()" maxlength="7">
+                            <button type="button" class="clear-bg-color" onclick="clearBackgroundColor(${lineCount})">Clear</button>
+                        </div>
+                    </div>
+                </div>
             `;
             container.appendChild(newLine);
             updateLineNumbers();
@@ -996,10 +1172,33 @@
                 const displayLines = [];
                 const lineConfigs = document.querySelectorAll('.line-config');
                 lineConfigs.forEach(line => {
-                    displayLines.push({
-                        type: line.querySelector('.line-type').value,
-                        content: line.querySelector('.line-content').value
-                    });
+                    const lineType = line.querySelector('.line-type').value;
+                    const contentField = line.querySelector('.line-content');
+                    const spacingField = line.querySelector('.line-spacing');
+                    const scrollSpeedField = line.querySelector('.line-scroll-speed');
+                    const bgColorField = line.querySelector('.line-bg-color');
+
+                    const lineConfig = {
+                        type: lineType,
+                        spacing: spacingField ? parseInt(spacingField.value) : 20
+                    };
+
+                    // Only include content for static text lines
+                    if (contentField && lineType === 'static') {
+                        lineConfig.content = contentField.value;
+                    }
+
+                    // Include scroll speed for scrolling line types
+                    if (scrollSpeedField && (lineType === 'message' || lineType === 'calendar')) {
+                        lineConfig.scroll_speed = parseFloat(scrollSpeedField.value);
+                    }
+
+                    // Include background color if set and not black
+                    if (bgColorField && bgColorField.value !== '#000000') {
+                        lineConfig.background_color = hexToRgb(bgColorField.value);
+                    }
+
+                    displayLines.push(lineConfig);
                 });
 
                 // Gather all current settings

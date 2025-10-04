@@ -314,26 +314,44 @@ class TextDisplay:
         else:
             # Use configurable display lines
             y_position = 12  # Start at top
-            line_height = 20  # Spacing between lines
+            default_line_height = 20  # Default spacing between lines
 
             for line_config in display_lines:
                 line_type = line_config.get("type", "disabled")
                 line_content = line_config.get("content", "")
+                line_spacing = line_config.get("spacing", default_line_height)
+                line_scroll_speed = line_config.get("scroll_speed", None)
+                line_bg_color = line_config.get("background_color", None)
 
                 if line_type == "disabled":
                     continue
 
-                if line_type == "department":
+                # Draw background color bar if specified
+                if line_bg_color:
+                    self._draw_background_bar(
+                        y_position - 8, line_spacing, line_bg_color
+                    )
+
+                if line_type == "spacer":
+                    # Spacer just adds space, no content
+                    y_position += line_spacing
+                    continue
+
+                elif line_type == "department":
                     dept_name = self.config.get("department_name", "DEPARTMENT")
                     self._draw_centered_text(
                         dept_name, self.title_font, colors["department"], y_position
                     )
 
                 elif line_type == "message":
-                    self._draw_scrolling_message(y_position, colors["text"])
+                    self._draw_scrolling_message(
+                        y_position, colors["text"], line_scroll_speed
+                    )
 
                 elif line_type == "calendar":
-                    self._draw_calendar_events(y_position, colors["calendar"])
+                    self._draw_calendar_events(
+                        y_position, colors["calendar"], line_scroll_speed
+                    )
 
                 elif line_type == "static":
                     if line_content:
@@ -341,10 +359,19 @@ class TextDisplay:
                             line_content, self.text_font, colors["text"], y_position
                         )
 
-                y_position += line_height
+                y_position += line_spacing
 
         # Swap buffers
         self.canvas = self.matrix.SwapOnVSync(self.canvas)
+
+    def _draw_background_bar(self, y: int, height: int, color_rgb: List[int]) -> None:
+        """Draw a full-width background color bar."""
+        bg_color = graphics.Color(*color_rgb)
+        for row in range(max(0, y), min(self.canvas.height, y + height)):
+            for col in range(self.canvas.width):
+                self.canvas.SetPixel(
+                    col, row, bg_color.red, bg_color.green, bg_color.blue
+                )
 
     def _draw_centered_text(
         self, text: str, font: graphics.Font, color: graphics.Color, y: int
@@ -354,7 +381,9 @@ class TextDisplay:
         x = (self.canvas.width - text_width) // 2
         graphics.DrawText(self.canvas, font, x, y, color, text)
 
-    def _draw_scrolling_message(self, y: int, color: graphics.Color = None) -> None:
+    def _draw_scrolling_message(
+        self, y: int, color: graphics.Color = None, custom_scroll_speed: float = None
+    ) -> None:
         """Draw scrolling message at specified y position."""
         messages = self.config.get("scrolling_messages", ["No messages configured"])
         if not messages:
@@ -377,8 +406,11 @@ class TextDisplay:
             current_message,
         )
 
-        # Update scroll position
-        scroll_speed = self.config.get("display_settings.scroll_speed", 0.1)
+        # Update scroll position - use custom speed if provided, otherwise use global setting
+        if custom_scroll_speed is not None:
+            scroll_speed = custom_scroll_speed
+        else:
+            scroll_speed = self.config.get("display_settings.scroll_speed", 0.1)
         self.scroll_pos -= int(scroll_speed * 10)  # Convert to pixel movement per frame
 
         # Change message when text completely scrolled off screen + 2 second pause
@@ -393,7 +425,9 @@ class TextDisplay:
             elif self.scroll_pos + text_len < -10:
                 self.scroll_pos = -text_len - 10
 
-    def _draw_calendar_events(self, y: int, color: graphics.Color = None) -> None:
+    def _draw_calendar_events(
+        self, y: int, color: graphics.Color = None, custom_scroll_speed: float = None
+    ) -> None:
         """Draw scrolling calendar events."""
         events = self.calendar_manager.fetch_events()
 
@@ -441,8 +475,11 @@ class TextDisplay:
             event_text,
         )
 
-        # Update scroll position
-        scroll_speed = self.config.get("display_settings.scroll_speed", 0.1)
+        # Update scroll position - use custom speed if provided, otherwise use global setting
+        if custom_scroll_speed is not None:
+            scroll_speed = custom_scroll_speed
+        else:
+            scroll_speed = self.config.get("display_settings.scroll_speed", 0.1)
         self.calendar_scroll_pos -= int(
             scroll_speed * 10
         )  # Convert to pixel movement per frame
