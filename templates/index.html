@@ -557,6 +557,7 @@
         <div class="header">
             <h1>BecaTicker Control Panel</h1>
             <p>Manage your LED matrix display system</p>
+            <button onclick="logout()" style="position: absolute; top: 20px; right: 20px; padding: 8px 16px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; border-radius: 4px; cursor: pointer; font-size: 14px;">Logout</button>
         </div>
 
         <div class="content">
@@ -651,6 +652,51 @@
                     <strong>Note:</strong> Arcade mode will temporarily replace the clock display with gaming interface.
                     The text display on Chain 1 will continue to operate normally.
                 </p>
+            </div>
+
+            <!-- User Management (Admin Only) -->
+            <div class="section" id="userManagementSection" style="display: none;">
+                <h2>👥 User Management</h2>
+                
+                <div style="margin-bottom: 20px;">
+                    <h3>Create New User</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr auto auto; gap: 10px; align-items: end;">
+                        <div>
+                            <label for="newUsername">Username:</label>
+                            <input type="text" id="newUsername" placeholder="Enter username">
+                        </div>
+                        <div>
+                            <label for="newPassword">Password:</label>
+                            <input type="password" id="newPassword" placeholder="Enter password">
+                        </div>
+                        <div>
+                            <label for="newUserRole">Role:</label>
+                            <select id="newUserRole">
+                                <option value="user">User</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary" onclick="createUser()">Create User</button>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3>Existing Users</h3>
+                    <table id="usersTable" style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                        <thead>
+                            <tr style="background: #f8f9fa;">
+                                <th style="padding: 10px; text-align: left; border: 1px solid #dee2e6;">Username</th>
+                                <th style="padding: 10px; text-align: left; border: 1px solid #dee2e6;">Role</th>
+                                <th style="padding: 10px; text-align: left; border: 1px solid #dee2e6;">Created</th>
+                                <th style="padding: 10px; text-align: left; border: 1px solid #dee2e6;">Last Login</th>
+                                <th style="padding: 10px; text-align: left; border: 1px solid #dee2e6;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTableBody">
+                            <!-- Users will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             <!-- Display Settings -->
@@ -1618,6 +1664,161 @@
                 showAlert('Failed to stop arcade mode: ' + error.message, 'error');
             }
         }
+
+        // Logout function
+        async function logout() {
+            try {
+                const response = await fetch('/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                if (response.ok) {
+                    window.location.href = '/login';
+                } else {
+                    // Fallback - redirect anyway
+                    window.location.href = '/login';
+                }
+            } catch (error) {
+                console.error('Logout error:', error);
+                // Fallback - redirect anyway  
+                window.location.href = '/login';
+            }
+        }
+
+        // User Management Functions
+        let isAdminUser = false;
+
+        async function checkUserRole() {
+            try {
+                const response = await fetch('/api/auth/status');
+                const data = await response.json();
+                isAdminUser = data.is_admin;
+                
+                if (isAdminUser) {
+                    document.getElementById('userManagementSection').style.display = 'block';
+                    loadUsers();
+                }
+            } catch (error) {
+                console.error('Error checking user role:', error);
+            }
+        }
+
+        async function loadUsers() {
+            if (!isAdminUser) return;
+            
+            try {
+                const response = await fetch('/api/users');
+                const users = await response.json();
+                
+                const tbody = document.getElementById('usersTableBody');
+                tbody.innerHTML = '';
+                
+                users.forEach(user => {
+                    const row = document.createElement('tr');
+                    const createdDate = new Date(user.created).toLocaleDateString();
+                    const lastLogin = user.last_login ? new Date(user.last_login).toLocaleDateString() : 'Never';
+                    
+                    row.innerHTML = `
+                        <td style="padding: 8px; border: 1px solid #dee2e6;">${user.username}</td>
+                        <td style="padding: 8px; border: 1px solid #dee2e6;">
+                            <span style="background: ${user.role === 'admin' ? '#28a745' : '#6c757d'}; color: white; padding: 2px 6px; border-radius: 3px; font-size: 12px;">
+                                ${user.role.toUpperCase()}
+                            </span>
+                        </td>
+                        <td style="padding: 8px; border: 1px solid #dee2e6;">${createdDate}</td>
+                        <td style="padding: 8px; border: 1px solid #dee2e6;">${lastLogin}</td>
+                        <td style="padding: 8px; border: 1px solid #dee2e6;">
+                            ${user.username !== 'admin' ? 
+                                `<button class="btn btn-sm btn-danger" onclick="deleteUser('${user.username}')">Delete</button>` :
+                                '<span style="color: #6c757d; font-size: 12px;">Protected</span>'
+                            }
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error loading users:', error);
+                showAlert('Failed to load users', 'error');
+            }
+        }
+
+        async function createUser() {
+            const username = document.getElementById('newUsername').value.trim();
+            const password = document.getElementById('newPassword').value;
+            const role = document.getElementById('newUserRole').value;
+            
+            if (!username || !password) {
+                showAlert('Please enter username and password', 'error');
+                return;
+            }
+            
+            if (password.length < 6) {
+                showAlert('Password must be at least 6 characters', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/users', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password,
+                        role: role
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    showAlert(result.message, 'success');
+                    document.getElementById('newUsername').value = '';
+                    document.getElementById('newPassword').value = '';
+                    document.getElementById('newUserRole').value = 'user';
+                    loadUsers();
+                } else {
+                    showAlert(result.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error creating user:', error);
+                showAlert('Failed to create user', 'error');
+            }
+        }
+
+        async function deleteUser(username) {
+            if (!confirm(`Are you sure you want to delete user "${username}"?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/users/${username}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    showAlert(result.message, 'success');
+                    loadUsers();
+                } else {
+                    showAlert(result.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error deleting user:', error);
+                showAlert('Failed to delete user', 'error');
+            }
+        }
+
+        // Initialize user role check when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add a small delay to ensure other initialization is complete
+            setTimeout(checkUserRole, 500);
+        });
     </script>
 </body>
 

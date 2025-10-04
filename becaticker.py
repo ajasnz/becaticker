@@ -11,20 +11,23 @@ Date: September 30, 2025
 """
 
 import argparse
+import hashlib
 import json
 import logging
 import math
 import os
+import secrets
 import subprocess
 import sys
 import threading
 import time
 from datetime import datetime, timedelta, timezone
+from functools import wraps
 from typing import Dict, List, Optional, Tuple
 
 import requests
 from dateutil import parser as date_parser
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, session, redirect, url_for
 from icalendar import Calendar
 from PIL import Image, ImageDraw, ImageFont
 
@@ -871,11 +874,175 @@ class ClockDisplay:
                 y1 += sy
 
 
+class UserManager:
+    """Manages user authentication with hashed passwords and JSON storage."""
+    
+    def __init__(self, db_file: str = "users.db"):
+        self.db_file = db_file
+        self.users = self.load_users()
+        
+    def load_users(self) -> Dict:
+        """Load users from JSON file or create default admin user."""
+        try:
+            if os.path.exists(self.db_file):
+                with open(self.db_file, 'r') as f:
+                    return json.load(f)
+            else:
+                # Create default admin user with hashed password
+                default_users = {
+                    "admin": {
+                        "password_hash": self.hash_password("becaticker123"),
+                        "role": "admin",
+                        "created": datetime.now().isoformat(),
+                        "last_login": None,
+                        "active": True
+                    }
+                }
+                self.save_users(default_users)
+                logger.info("Created default admin user (username: admin, password: becaticker123)")
+                return default_users
+        except Exception as e:
+            logger.error(f"Error loading users: {e}")
+            return {}
+    
+    def save_users(self, users: Dict = None) -> None:
+        """Save users to JSON file."""
+        try:
+            users_to_save = users or self.users
+            with open(self.db_file, 'w') as f:
+                json.dump(users_to_save, f, indent=2)
+            logger.info("Users database saved successfully")
+        except Exception as e:
+            logger.error(f"Error saving users: {e}")
+    
+    def hash_password(self, password: str) -> str:
+        """Hash a password using SHA256 with salt."""
+        salt = secrets.token_hex(16)
+        password_hash = hashlib.sha256((password + salt).encode()).hexdigest()
+        return f"{salt}:{password_hash}"
+    
+    def verify_password(self, password: str, password_hash: str) -> bool:
+        """Verify a password against its hash."""
+        try:
+            salt, hash_part = password_hash.split(':')
+            return hashlib.sha256((password + salt).encode()).hexdigest() == hash_part
+        except ValueError:
+            return False
+    
+    def authenticate_user(self, username: str, password: str) -> Optional[Dict]:
+        """Authenticate a user and return user info if successful."""
+        if username not in self.users:
+            return None
+            
+        user = self.users[username]
+        if not user.get("active", True):
+            return None
+            
+        if self.verify_password(password, user["password_hash"]):
+            # Update last login
+            self.users[username]["last_login"] = datetime.now().isoformat()
+            self.save_users()
+            
+            # Return user info without password hash
+            user_info = user.copy()
+            user_info.pop("password_hash", None)
+            user_info["username"] = username
+            return user_info
+            
+        return None
+    
+    def create_user(self, username: str, password: str, role: str = "user") -> bool:
+        """Create a new user."""
+        if username in self.users:
+            return False
+            
+        self.users[username] = {
+            "password_hash": self.hash_password(password),
+            "role": role,
+            "created": datetime.now().isoformat(),
+            "last_login": None,
+            "active": True
+        }
+        self.save_users()
+        logger.info(f"Created new user: {username}")
+        return True
+    
+    def update_user_password(self, username: str, new_password: str) -> bool:
+        """Update a user's password."""
+        if username not in self.users:
+            return False
+            
+        self.users[username]["password_hash"] = self.hash_password(new_password)
+        self.save_users()
+        logger.info(f"Updated password for user: {username}")
+        return True
+    
+    def delete_user(self, username: str) -> bool:
+        """Delete a user (mark as inactive)."""
+        if username not in self.users or username == "admin":  # Protect admin user
+            return False
+            
+        self.users[username]["active"] = False
+        self.save_users()
+        logger.info(f"Deactivated user: {username}")
+        return True
+    
+    def list_users(self) -> List[Dict]:
+        """List all active users (without password hashes)."""
+        users = []
+        for username, user_data in self.users.items():
+            if user_data.get("active", True):
+                user = user_data.copy()
+                user["username"] = username
+                user.pop("password_hash", None)
+                users.append(user)
+        return users
+    
+    def is_admin(self, username: str) -> bool:
+        """Check if a user has admin role."""
+        if username in self.users:
+            return self.users[username].get("role") == "admin"
+        return False
+
+
+# Authentication Configuration
+AUTH_CONFIG = {
+    "enabled": True,
+    "session_timeout": 3600  # 1 hour in seconds
+}
+
+
+def login_required(f):
+    """Decorator to require authentication for routes."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not AUTH_CONFIG["enabled"]:
+            return f(*args, **kwargs)
+            
+        if "authenticated" not in session or not session["authenticated"]:
+            if request.is_json:
+                return jsonify({"status": "error", "message": "Authentication required"}), 401
+            return redirect(url_for("login"))
+            
+        # Check session timeout
+        if "login_time" in session:
+            login_time = session["login_time"]
+            if time.time() - login_time > AUTH_CONFIG["session_timeout"]:
+                session.clear()
+                if request.is_json:
+                    return jsonify({"status": "error", "message": "Session expired"}), 401
+                return redirect(url_for("login"))
+                
+        return f(*args, **kwargs)
+    return decorated_function
+
+
 class BecaTicker:
     """Main application class coordinating all display components."""
 
     def __init__(self):
         self.config = Config()
+        self.user_manager = UserManager()
         self.calendar_manager = CalendarManager(self.config)
 
         # Initialize single matrix with parallel chains support
@@ -896,6 +1063,7 @@ class BecaTicker:
 
         # Web interface
         self.app = Flask(__name__)
+        self.app.secret_key = self.config.get("flask_secret_key", secrets.token_hex(32))
         self._setup_web_routes()
 
     def _create_matrix(self) -> RGBMatrix:
@@ -925,14 +1093,17 @@ class BecaTicker:
         """Set up Flask web interface routes."""
 
         @self.app.route("/")
+        @login_required
         def index():
             return render_template("index.html", config=self.config.config)
 
         @self.app.route("/api/config", methods=["GET"])
+        @login_required
         def get_config():
             return jsonify(self.config.config)
 
         @self.app.route("/api/config", methods=["POST"])
+        @login_required
         def update_config():
             try:
                 new_config = request.json
@@ -995,6 +1166,7 @@ class BecaTicker:
                 return jsonify({"status": "error", "message": str(e)}), 500
 
         @self.app.route("/api/events")
+        @login_required
         def get_events():
             events = self.calendar_manager.fetch_events()
             # Convert datetime objects to strings for JSON serialization
@@ -1011,6 +1183,7 @@ class BecaTicker:
             return jsonify(serializable_events)
 
         @self.app.route("/api/arcade/start", methods=["POST"])
+        @login_required
         def start_arcade():
             try:
                 if self.clock_display and self.clock_display.enter_arcade_mode():
@@ -1032,6 +1205,7 @@ class BecaTicker:
                 return jsonify({"status": "error", "message": str(e)}), 500
 
         @self.app.route("/api/arcade/stop", methods=["POST"])
+        @login_required
         def stop_arcade():
             try:
                 if self.clock_display and self.clock_display.exit_arcade_mode():
@@ -1053,6 +1227,7 @@ class BecaTicker:
                 return jsonify({"status": "error", "message": str(e)}), 500
 
         @self.app.route("/api/arcade/status")
+        @login_required
         def arcade_status():
             return jsonify(
                 {
@@ -1064,6 +1239,125 @@ class BecaTicker:
                     "enabled": self.config.get("arcade_mode.enabled", False),
                 }
             )
+
+        # Authentication routes
+        @self.app.route("/login", methods=["GET", "POST"])
+        def login():
+            if request.method == "POST":
+                data = request.get_json() or request.form
+                username = data.get("username", "").strip()
+                password = data.get("password", "")
+
+                user_info = self.user_manager.authenticate_user(username, password)
+                if user_info:
+                    session["authenticated"] = True
+                    session["username"] = username
+                    session["user_role"] = user_info["role"]
+                    session["login_time"] = time.time()
+
+                    if request.is_json:
+                        return jsonify({"status": "success", "message": "Login successful"})
+                    else:
+                        return redirect("/")
+                else:
+                    if request.is_json:
+                        return jsonify({"status": "error", "message": "Invalid credentials"}), 401
+                    else:
+                        return render_template("login.html", error="Invalid username or password")
+
+            return render_template("login.html")
+
+        @self.app.route("/logout", methods=["GET", "POST"])
+        def logout():
+            session.clear()
+            if request.is_json:
+                return jsonify({"status": "success", "message": "Logged out successfully"})
+            else:
+                return redirect("/login")
+
+        @self.app.route("/api/auth/status")
+        def auth_status():
+            authenticated = session.get("authenticated", False)
+            if authenticated and "login_time" in session:
+                # Check if session has expired
+                if time.time() - session["login_time"] > AUTH_CONFIG["session_timeout"]:
+                    session.clear()
+                    authenticated = False
+
+            return jsonify({
+                "authenticated": authenticated,
+                "username": session.get("username", ""),
+                "user_role": session.get("user_role", "user"),
+                "is_admin": session.get("user_role") == "admin",
+                "auth_enabled": AUTH_CONFIG["enabled"]
+            })
+
+        # User management routes (admin only)
+        @self.app.route("/api/users", methods=["GET"])
+        @login_required
+        def list_users():
+            if session.get("user_role") != "admin":
+                return jsonify({"status": "error", "message": "Admin access required"}), 403
+            
+            users = self.user_manager.list_users()
+            return jsonify(users)
+
+        @self.app.route("/api/users", methods=["POST"])
+        @login_required
+        def create_user():
+            if session.get("user_role") != "admin":
+                return jsonify({"status": "error", "message": "Admin access required"}), 403
+            
+            data = request.get_json()
+            username = data.get("username", "").strip()
+            password = data.get("password", "")
+            role = data.get("role", "user")
+            
+            if not username or not password:
+                return jsonify({"status": "error", "message": "Username and password required"}), 400
+            
+            if len(password) < 6:
+                return jsonify({"status": "error", "message": "Password must be at least 6 characters"}), 400
+            
+            if self.user_manager.create_user(username, password, role):
+                return jsonify({"status": "success", "message": f"User '{username}' created successfully"})
+            else:
+                return jsonify({"status": "error", "message": "Username already exists"}), 400
+
+        @self.app.route("/api/users/<username>", methods=["DELETE"])
+        @login_required
+        def delete_user(username):
+            if session.get("user_role") != "admin":
+                return jsonify({"status": "error", "message": "Admin access required"}), 403
+            
+            if username == "admin":
+                return jsonify({"status": "error", "message": "Cannot delete admin user"}), 400
+            
+            if self.user_manager.delete_user(username):
+                return jsonify({"status": "success", "message": f"User '{username}' deleted successfully"})
+            else:
+                return jsonify({"status": "error", "message": "User not found or cannot be deleted"}), 400
+
+        @self.app.route("/api/users/<username>/password", methods=["PUT"])
+        @login_required
+        def change_password(username):
+            # Users can change their own password, admins can change any password
+            current_user = session.get("username")
+            is_admin = session.get("user_role") == "admin"
+            
+            if current_user != username and not is_admin:
+                return jsonify({"status": "error", "message": "Unauthorized"}), 403
+            
+            data = request.get_json()
+            new_password = data.get("new_password", "")
+            
+            if len(new_password) < 6:
+                return jsonify({"status": "error", "message": "Password must be at least 6 characters"}), 400
+            
+            if self.user_manager.update_user_password(username, new_password):
+                return jsonify({"status": "success", "message": "Password updated successfully"})
+            else:
+                return jsonify({"status": "error", "message": "User not found"}), 400
 
     def start(self) -> None:
         """Start the display system."""
