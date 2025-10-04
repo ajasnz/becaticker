@@ -40,13 +40,36 @@ source venv/bin/activate
 # Upgrade pip in virtual environment
 pip install --upgrade pip > /dev/null 2>&1
 
+# Install Cython if not available
+if ! command -v cython3 &> /dev/null && ! python3 -c "import Cython" &> /dev/null; then
+    echo "📦 Installing Cython in virtual environment..."
+    pip install Cython
+fi
+
 # Check if the RGB matrix library is compiled
-if [ ! -f "hzeller/lib/librgbmatrix.a" ]; then
+if [ ! -f "hzeller/lib/librgbmatrix.a" ] || [ ! -f "hzeller/bindings/python/rgbmatrix.so" ]; then
     echo "⚠️  RGB Matrix library not found. Attempting to compile..."
     cd hzeller
-    make build-python PYTHON=$(which python3)
+    
+    # Try multiple build approaches
+    if make build-python PYTHON=$(which python3); then
+        echo "✅ RGB Matrix library compiled successfully"
+    else
+        echo "⚠️  Standard build failed, trying alternative..."
+        make clean
+        
+        # Try installing Python bindings directly
+        cd bindings/python
+        pip install . || {
+            echo "❌ Build failed. Please run setup.sh first or install manually:"
+            echo "   cd hzeller && sudo make install-python"
+            cd ../../..
+            exit 1
+        }
+        cd ../..
+        echo "✅ Python bindings installed via pip"
+    fi
     cd ..
-    echo "✅ RGB Matrix library compiled successfully"
 fi
 
 # Install Python dependencies if requirements.txt exists

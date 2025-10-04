@@ -39,9 +39,19 @@ source venv/bin/activate
 ## Upgrade pip in virtual environment
 pip install --upgrade pip
 
+## Install Cython if needed
+if ! command -v cython3 &> /dev/null; then
+    pip install Cython
+fi
+
 ## Compile the LED matrix library
 cd hzeller
-make build-python PYTHON=$(which python3)
+make build-python PYTHON=$(which python3) || {
+    echo "Build failed, trying alternative method..."
+    cd bindings/python
+    pip install .
+    cd ../..
+}
 cd ..
 
 ## Install requirements in virtual environment

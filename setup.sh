@@ -19,7 +19,13 @@ echo "📦 Installing system packages..."
 sudo apt-get update
 sudo apt-get install -y python3 python3-venv python3-full git build-essential \
     libgraphicsmagick++-dev libwebp-dev libjpeg-dev libgif-dev \
-    python3-dev cython3
+    python3-dev python3-pip
+
+## Try to install cython3 from system packages first
+echo "🐍 Installing Cython..."
+sudo apt-get install -y cython3 || {
+    echo "⚠️  System cython3 not available, will install via pip in virtual environment"
+}
 
 ## Remove unneeded packages to free up resources
 echo "🗑️  Removing unnecessary packages..."
@@ -40,14 +46,44 @@ source venv/bin/activate
 ## Upgrade pip and install build tools
 pip install --upgrade pip setuptools wheel
 
+## Install Cython in virtual environment if system version not available
+if ! command -v cython3 &> /dev/null; then
+    echo "📦 Installing Cython in virtual environment..."
+    pip install Cython
+fi
+
 ## Try to build the RGB matrix library
 echo "🔨 Building RGB Matrix library..."
 cd hzeller
-make build-python PYTHON=$(which python3) || {
-    echo "⚠️  Build failed, trying alternative build..."
+
+# First, try the standard build
+if make build-python PYTHON=$(which python3); then
+    echo "✅ RGB Matrix library built successfully"
+else
+    echo "⚠️  Standard build failed, trying alternatives..."
+    
+    # Clean and try with explicit Cython path
     make clean
-    make PYTHON=$(which python3)
-}
+    
+    # Try with virtual environment Python and Cython
+    if PYTHON=$(which python3) make build-python; then
+        echo "✅ RGB Matrix library built with alternative method"
+    else
+        echo "⚠️  Build still failing, trying manual Python binding install..."
+        # Try to install the Python bindings directly
+        cd bindings/python
+        pip install .
+        cd ../..
+        
+        if [ $? -eq 0 ]; then
+            echo "✅ Python bindings installed directly"
+        else
+            echo "❌ All build methods failed. You may need to install the library manually."
+            echo "   Try: cd hzeller && sudo make install-python"
+        fi
+    fi
+fi
+
 cd ..
 
 ## Install Python dependencies
