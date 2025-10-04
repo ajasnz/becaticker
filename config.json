@@ -15,7 +15,7 @@
     "rows": 64,
     "cols": 64,
     "chain_length": 4,
-    "parallel": 1,
+    "parallel": 2,
     "brightness": 40,
     "gpio_mapping": "regular",
     "gpio_slowdown": 2,

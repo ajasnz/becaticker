@@ -249,12 +249,17 @@ class TextDisplay:
     """Handles text display on Chain 1 (4x1 horizontal panels)."""
 
     def __init__(
-        self, matrix: RGBMatrix, config: Config, calendar_manager: CalendarManager
+        self,
+        matrix: RGBMatrix,
+        config: Config,
+        calendar_manager: CalendarManager,
+        row_offset: int = 0,
     ):
         self.matrix = matrix
         self.config = config
         self.calendar_manager = calendar_manager
         self.canvas = matrix.CreateFrameCanvas()
+        self.row_offset = row_offset  # For parallel chain support
 
         # Load fonts
         self.title_font = graphics.Font()
@@ -459,7 +464,12 @@ class TextDisplay:
     def _draw_background_bar(self, y: int, height: int, color_rgb: List[int]) -> None:
         """Draw a full-width background color bar."""
         bg_color = graphics.Color(*color_rgb)
-        for row in range(max(0, y), min(self.canvas.height, y + height)):
+        # Apply row offset for parallel chain support
+        y_adjusted = y + self.row_offset
+        for row in range(
+            max(self.row_offset, y_adjusted),
+            min(self.row_offset + 64, y_adjusted + height),
+        ):
             for col in range(self.canvas.width):
                 self.canvas.SetPixel(
                     col, row, bg_color.red, bg_color.green, bg_color.blue
@@ -484,12 +494,17 @@ class TextDisplay:
             for scale_x in range(text_size):
                 for scale_y in range(text_size):
                     graphics.DrawText(
-                        self.canvas, font, x + scale_x, y + scale_y, color, text
+                        self.canvas,
+                        font,
+                        x + scale_x,
+                        y + scale_y + self.row_offset,
+                        color,
+                        text,
                     )
         else:
             text_width = sum([font.CharacterWidth(ord(c)) for c in text])
             x = (self.canvas.width - text_width) // 2
-            graphics.DrawText(self.canvas, font, x, y, color, text)
+            graphics.DrawText(self.canvas, font, x, y + self.row_offset, color, text)
 
     def _draw_scrolling_message(
         self,
@@ -524,7 +539,7 @@ class TextDisplay:
                         self.canvas,
                         font,
                         self.scroll_pos + scale_x,
-                        y + scale_y,
+                        y + scale_y + self.row_offset,
                         color,
                         current_message,
                     )
@@ -533,7 +548,7 @@ class TextDisplay:
                 self.canvas,
                 font,
                 self.scroll_pos,
-                y,
+                y + self.row_offset,
                 color,
                 current_message,
             )
@@ -588,7 +603,7 @@ class TextDisplay:
                             self.canvas,
                             font,
                             2 + scale_x,
-                            y + scale_y,
+                            y + scale_y + self.row_offset,
                             color,
                             "No upcoming events",
                         )
@@ -597,7 +612,7 @@ class TextDisplay:
                     self.canvas,
                     font,
                     2,
-                    y,
+                    y + self.row_offset,
                     color,
                     "No upcoming events",
                 )
@@ -628,7 +643,7 @@ class TextDisplay:
                         self.canvas,
                         font,
                         self.calendar_scroll_pos + scale_x,
-                        y + scale_y,
+                        y + scale_y + self.row_offset,
                         color,
                         event_text,
                     )
@@ -637,7 +652,7 @@ class TextDisplay:
                 self.canvas,
                 font,
                 self.calendar_scroll_pos,
-                y,
+                y + self.row_offset,
                 color,
                 event_text,
             )
@@ -659,17 +674,18 @@ class TextDisplay:
 class ClockDisplay:
     """Handles analog clock display on Chain 2 (2x2 square panels)."""
 
-    def __init__(self, matrix: RGBMatrix, config: Config):
+    def __init__(self, matrix: RGBMatrix, config: Config, row_offset: int = 0):
         self.matrix = matrix
         self.config = config
         self.canvas = matrix.CreateFrameCanvas()
+        self.row_offset = row_offset  # For parallel chain support
 
         # Clock settings
         clock_color = self.config.get("display_settings.clock_color", [0, 255, 0])
         self.clock_color = graphics.Color(*clock_color)
         self.center_x = 64  # Center of 128x128 display
-        self.center_y = 64
-        self.radius = 60
+        self.center_y = 32 + row_offset  # Adjust center for parallel chain
+        self.radius = 30  # Smaller radius for 64-height constraint
 
         # Arcade mode
         self.arcade_mode = False
@@ -778,7 +794,10 @@ class ClockDisplay:
             rad = math.radians(angle)
             x = int(self.center_x + self.radius * math.cos(rad))
             y = int(self.center_y + self.radius * math.sin(rad))
-            if 0 <= x < 128 and 0 <= y < 128:
+            if (
+                0 <= x < self.canvas.width
+                and self.row_offset <= y < self.row_offset + 64
+            ):
                 self.canvas.SetPixel(
                     x,
                     y,
@@ -834,7 +853,10 @@ class ClockDisplay:
         err = dx - dy
 
         while True:
-            if 0 <= x1 < 128 and 0 <= y1 < 128:
+            if (
+                0 <= x1 < self.canvas.width
+                and self.row_offset <= y1 < self.row_offset + 64
+            ):
                 self.canvas.SetPixel(x1, y1, r, g, b)
 
             if x1 == x2 and y1 == y2:
@@ -856,14 +878,17 @@ class BecaTicker:
         self.config = Config()
         self.calendar_manager = CalendarManager(self.config)
 
-        # Initialize single matrix - only chain 1 (text display)
-        # This will control your 4 panels for text display only
+        # Initialize single matrix with parallel chains support
+        # This will control both chains in parallel:
+        # - Chain 1 (parallel=0): 4 text panels (rows 0-63)
+        # - Chain 2 (parallel=1): clock panels (rows 64-127)
         self.matrix = self._create_matrix()
 
-        # Initialize displays with different zones of the same matrix
-        self.text_display = TextDisplay(self.matrix, self.config, self.calendar_manager)
-        # For now, disable the clock display on the same matrix to prevent interference
-        self.clock_display = None
+        # Initialize displays with different row offsets for parallel chains
+        self.text_display = TextDisplay(
+            self.matrix, self.config, self.calendar_manager, row_offset=0
+        )
+        self.clock_display = ClockDisplay(self.matrix, self.config, row_offset=64)
 
         # Threading
         self.running = False
@@ -997,7 +1022,7 @@ class BecaTicker:
                         jsonify(
                             {
                                 "status": "error",
-                                "message": "Arcade mode not available or failed to start",
+                                "message": "Failed to start arcade mode",
                             }
                         ),
                         500,
@@ -1018,7 +1043,7 @@ class BecaTicker:
                         jsonify(
                             {
                                 "status": "error",
-                                "message": "Arcade mode not available or failed to stop",
+                                "message": "Failed to stop arcade mode",
                             }
                         ),
                         500,
