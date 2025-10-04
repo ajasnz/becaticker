@@ -19,7 +19,7 @@ import subprocess
 import sys
 import threading
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional, Tuple
 
 import requests
@@ -195,9 +195,28 @@ class CalendarManager:
                                 event["start"], datetime.min.time()
                             )
 
+                        # Normalize timezone handling
                         now = datetime.now()
-                        if start_time > now and start_time < now + timedelta(days=7):
-                            all_events.append(event)
+
+                        # Convert both to naive datetime for comparison
+                        if start_time.tzinfo is not None:
+                            # Convert timezone-aware to local naive time
+                            start_time = start_time.astimezone().replace(tzinfo=None)
+
+                        # Ensure now is also naive (it should be by default)
+                        if now.tzinfo is not None:
+                            now = now.replace(tzinfo=None)
+
+                        try:
+                            if start_time > now and start_time < now + timedelta(
+                                days=7
+                            ):
+                                all_events.append(event)
+                        except TypeError as te:
+                            logger.warning(
+                                f"Skipping event due to datetime comparison error: {te}"
+                            )
+                            continue
 
             except Exception as e:
                 logger.error(f"Error fetching calendar from {url}: {e}")
