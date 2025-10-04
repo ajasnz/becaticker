@@ -12,26 +12,14 @@
   ],
   "web_port": 5000,
   "matrix_options": {
-    "chain1": {
-      "rows": 64,
-      "cols": 64,
-      "chain_length": 4,
-      "parallel": 1,
-      "brightness": 40,
-      "gpio_mapping": "regular",
-      "gpio_slowdown": 2,
-      "hardware_mapping": "regular"
-    },
-    "chain2": {
-      "rows": 64,
-      "cols": 64,
-      "chain_length": 4,
-      "parallel": 1,
-      "brightness": 40,
-      "gpio_mapping": "regular",
-      "gpio_slowdown": 2,
-      "hardware_mapping": "regular"
-    }
+    "rows": 64,
+    "cols": 64,
+    "chain_length": 4,
+    "parallel": 1,
+    "brightness": 40,
+    "gpio_mapping": "regular",
+    "gpio_slowdown": 2,
+    "hardware_mapping": "regular"
   },
   "display_settings": {
     "text_color": [
@@ -49,7 +37,7 @@
       0,
       0
     ],
-    "scroll_speed": 1,
+    "scroll_speed": 0.5,
     "calendar_refresh_minutes": 30
   },
   "arcade_mode": {

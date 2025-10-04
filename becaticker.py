@@ -394,8 +394,10 @@ class TextDisplay:
                     # Center the text within this range
                     bar_start = y_position - 8
                     bar_height = line_spacing
-                    text_y_position = bar_start + (bar_height // 2) + 4  # +4 for font baseline
-                    
+                    text_y_position = (
+                        bar_start + (bar_height // 2) + 4
+                    )  # +4 for font baseline
+
                     self._draw_background_bar(bar_start, bar_height, line_bg_color)
 
                 if line_type == "spacer":
@@ -854,15 +856,14 @@ class BecaTicker:
         self.config = Config()
         self.calendar_manager = CalendarManager(self.config)
 
-        # Initialize matrices
-        self.matrix_chain1 = self._create_matrix("chain1")
-        self.matrix_chain2 = self._create_matrix("chain2")
+        # Initialize single matrix - only chain 1 (text display)
+        # This will control your 4 panels for text display only
+        self.matrix = self._create_matrix()
 
-        # Initialize displays
-        self.text_display = TextDisplay(
-            self.matrix_chain1, self.config, self.calendar_manager
-        )
-        self.clock_display = ClockDisplay(self.matrix_chain2, self.config)
+        # Initialize displays with different zones of the same matrix
+        self.text_display = TextDisplay(self.matrix, self.config, self.calendar_manager)
+        # For now, disable the clock display on the same matrix to prevent interference
+        self.clock_display = None
 
         # Threading
         self.running = False
@@ -872,11 +873,11 @@ class BecaTicker:
         self.app = Flask(__name__)
         self._setup_web_routes()
 
-    def _create_matrix(self, chain_name: str) -> RGBMatrix:
-        """Create and configure an RGB matrix for the specified chain."""
+    def _create_matrix(self) -> RGBMatrix:
+        """Create and configure an RGB matrix."""
         options = RGBMatrixOptions()
 
-        chain_config = self.config.get(f"matrix_options.{chain_name}", {})
+        chain_config = self.config.get("matrix_options", {})
 
         options.rows = chain_config.get("rows", 64)
         options.cols = chain_config.get("cols", 64)
@@ -887,11 +888,11 @@ class BecaTicker:
         options.gpio_slowdown = chain_config.get("gpio_slowdown", 2)
         options.drop_privileges = False
         options.disable_hardware_pulsing = True
-        
+
         # Additional anti-flickering options for long chains
         if chain_config.get("chain_length", 1) >= 4:
             options.limit_refresh_rate_hz = 120  # Limit refresh rate for stability
-            options.show_refresh_rate = False     # Don't show refresh rate counter
+            options.show_refresh_rate = False  # Don't show refresh rate counter
 
         return RGBMatrix(options=options)
 
@@ -987,7 +988,7 @@ class BecaTicker:
         @self.app.route("/api/arcade/start", methods=["POST"])
         def start_arcade():
             try:
-                if self.clock_display.enter_arcade_mode():
+                if self.clock_display and self.clock_display.enter_arcade_mode():
                     return jsonify(
                         {"status": "success", "message": "Arcade mode started"}
                     )
@@ -996,7 +997,7 @@ class BecaTicker:
                         jsonify(
                             {
                                 "status": "error",
-                                "message": "Failed to start arcade mode",
+                                "message": "Arcade mode not available or failed to start",
                             }
                         ),
                         500,
@@ -1008,14 +1009,17 @@ class BecaTicker:
         @self.app.route("/api/arcade/stop", methods=["POST"])
         def stop_arcade():
             try:
-                if self.clock_display.exit_arcade_mode():
+                if self.clock_display and self.clock_display.exit_arcade_mode():
                     return jsonify(
                         {"status": "success", "message": "Arcade mode stopped"}
                     )
                 else:
                     return (
                         jsonify(
-                            {"status": "error", "message": "Failed to stop arcade mode"}
+                            {
+                                "status": "error",
+                                "message": "Arcade mode not available or failed to stop",
+                            }
                         ),
                         500,
                     )
@@ -1027,7 +1031,11 @@ class BecaTicker:
         def arcade_status():
             return jsonify(
                 {
-                    "active": self.clock_display.is_arcade_active(),
+                    "active": (
+                        self.clock_display.is_arcade_active()
+                        if self.clock_display
+                        else False
+                    ),
                     "enabled": self.config.get("arcade_mode.enabled", False),
                 }
             )
@@ -1065,7 +1073,8 @@ class BecaTicker:
             try:
                 # Update displays
                 self.text_display.update_display()
-                self.clock_display.update_display()
+                if self.clock_display:
+                    self.clock_display.update_display()
 
                 # Small delay to prevent excessive CPU usage
                 time.sleep(0.1)
