@@ -193,7 +193,7 @@ class CalendarManager:
                             f"Processing event: {event['summary']} at {event['start']}"
                         )
 
-                        # Only include future events within next 30 days (increased from 7)
+                        # Only include future events within next 7 days
                         if isinstance(event["start"], datetime):
                             start_time = event["start"]
                         else:
@@ -215,9 +215,9 @@ class CalendarManager:
                             now = now.replace(tzinfo=None)
 
                         try:
-                            # Increased from 7 days to 30 days to catch more events
+                            # 7 day window
                             if start_time > now and start_time < now + timedelta(
-                                days=30
+                                days=7
                             ):
                                 all_events.append(event)
                                 logger.info(f"Added event: {event['summary']}")
@@ -238,7 +238,7 @@ class CalendarManager:
 
         # Sort events by start time
         all_events.sort(key=lambda x: x["start"])
-        self.events = all_events[:10]  # Keep only next 10 events
+        self.events = all_events[:30]  # Keep only next 30 events
         self.last_update = datetime.now()
 
         logger.info(f"Updated calendar with {len(self.events)} events")
