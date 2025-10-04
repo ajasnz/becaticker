@@ -274,6 +274,11 @@ class TextDisplay:
         self.current_message_index = 0
         self.message_change_time = time.time()
 
+        # Calendar scrolling state
+        self.calendar_scroll_pos = 0
+        self.current_event_index = 0
+        self.event_change_time = time.time()
+
     def update_display(self) -> None:
         """Update the text display with current information."""
         self.canvas.Clear()
@@ -305,14 +310,6 @@ class TextDisplay:
         if not messages:
             return
 
-        # Change message every 10 seconds
-        if time.time() - self.message_change_time > 10:
-            self.current_message_index = (self.current_message_index + 1) % len(
-                messages
-            )
-            self.message_change_time = time.time()
-            self.scroll_pos = self.canvas.width
-
         current_message = messages[self.current_message_index]
 
         # Draw scrolling text
@@ -329,12 +326,20 @@ class TextDisplay:
         scroll_speed = self.config.get("display_settings.scroll_speed", 0.05)
         self.scroll_pos -= 1
 
-        # Reset scroll when text completely off screen
+        # Change message when text completely scrolled off screen + 2 second pause
         if self.scroll_pos + text_len < 0:
-            self.scroll_pos = self.canvas.width
+            if time.time() - self.message_change_time > 2:  # 2 second pause
+                self.current_message_index = (self.current_message_index + 1) % len(
+                    messages
+                )
+                self.scroll_pos = self.canvas.width
+                self.message_change_time = time.time()
+            # Keep scroll position off-screen during pause
+            elif self.scroll_pos + text_len < -10:
+                self.scroll_pos = -text_len - 10
 
     def _draw_calendar_events(self, y: int) -> None:
-        """Draw upcoming calendar events."""
+        """Draw scrolling calendar events."""
         events = self.calendar_manager.fetch_events()
         if not events:
             graphics.DrawText(
@@ -347,22 +352,39 @@ class TextDisplay:
             )
             return
 
-        # Show first 2 events that fit
-        x_offset = 2
-        for i, event in enumerate(events[:2]):
-            if i > 0:
-                x_offset += 128  # Move to next panel area
+        # Change event every 12 seconds
+        if time.time() - self.event_change_time > 12:
+            self.current_event_index = (self.current_event_index + 1) % len(events)
+            self.event_change_time = time.time()
+            self.calendar_scroll_pos = self.canvas.width
 
-            # Format event text
-            if isinstance(event["start"], datetime):
-                start_str = event["start"].strftime("%m/%d %H:%M")
-            else:
-                start_str = event["start"].strftime("%m/%d")
+        current_event = events[self.current_event_index]
 
-            event_text = f"{start_str}: {event['summary'][:20]}"
-            graphics.DrawText(
-                self.canvas, self.small_font, x_offset, y, self.event_color, event_text
-            )
+        # Format event text
+        if isinstance(current_event["start"], datetime):
+            start_str = current_event["start"].strftime("%m/%d %H:%M")
+        else:
+            start_str = current_event["start"].strftime("%m/%d")
+
+        event_text = f"{start_str}: {current_event['summary']}"
+
+        # Draw scrolling event text
+        text_len = graphics.DrawText(
+            self.canvas,
+            self.small_font,
+            self.calendar_scroll_pos,
+            y,
+            self.event_color,
+            event_text,
+        )
+
+        # Update scroll position
+        scroll_speed = self.config.get("display_settings.scroll_speed", 0.05)
+        self.calendar_scroll_pos -= 1
+
+        # Reset scroll when text completely off screen
+        if self.calendar_scroll_pos + text_len < 0:
+            self.calendar_scroll_pos = self.canvas.width
 
 
 class ClockDisplay:

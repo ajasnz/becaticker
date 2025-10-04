@@ -300,6 +300,188 @@
                 font-size: 2rem;
             }
         }
+
+        /* Display Settings Styles */
+        .display-settings h3 {
+            color: #007bff;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+
+        .color-controls,
+        .font-controls,
+        .line-management {
+            margin-bottom: 30px;
+        }
+
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .color-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            border: 1px solid #dee2e6;
+        }
+
+        .color-control label {
+            font-weight: 500;
+            min-width: 80px;
+        }
+
+        .color-control input[type="color"] {
+            width: 40px;
+            height: 40px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .color-control input[type="text"] {
+            flex: 1;
+            padding: 5px 8px;
+            border: 1px solid #ced4da;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .line-config {
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 15px;
+            background: #f8f9fa;
+        }
+
+        .line-config.active {
+            border-color: #007bff;
+            background: #e7f3ff;
+        }
+
+        .line-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .line-title {
+            font-weight: bold;
+            color: #495057;
+        }
+
+        .line-controls {
+            display: flex;
+            gap: 5px;
+        }
+
+        .line-controls button {
+            padding: 2px 6px;
+            font-size: 12px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            background: #6c757d;
+            color: white;
+        }
+
+        .line-controls button:hover {
+            opacity: 0.8;
+        }
+
+        .line-controls .move-up {
+            background: #28a745;
+        }
+
+        .line-controls .move-down {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .line-controls .delete {
+            background: #dc3545;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .input-group label {
+            font-size: 12px;
+            font-weight: 500;
+            color: #495057;
+        }
+
+        .input-group input,
+        .input-group select {
+            padding: 6px 8px;
+            border: 1px solid #ced4da;
+            border-radius: 3px;
+            font-size: 14px;
+        }
+
+        .add-line-btn {
+            width: 100%;
+            padding: 12px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+
+        .add-line-btn:hover {
+            background: #218838;
+        }
+
+        .font-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .font-option {
+            padding: 10px;
+            border: 2px solid #dee2e6;
+            border-radius: 5px;
+            cursor: pointer;
+            text-align: center;
+            background: #f8f9fa;
+            transition: all 0.2s;
+        }
+
+        .font-option:hover {
+            border-color: #007bff;
+            background: #e7f3ff;
+        }
+
+        .font-option.selected {
+            border-color: #007bff;
+            background: #007bff;
+            color: white;
+        }
+
+        .scroll-timing {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
     </style>
 </head>
 
@@ -404,13 +586,105 @@
                 </p>
             </div>
 
+            <!-- Display Settings -->
+            <div class="section">
+                <h2>Display Settings</h2>
+
+                <!-- Scroll & Timing -->
+                <h3>Scroll & Timing</h3>
+                <div class="input-group">
+                    <label for="scroll-speed">Scroll Speed:</label>
+                    <input type="range" id="scroll-speed" min="0.01" max="0.2" step="0.01" value="0.05"
+                        onchange="updateScrollSpeed(this.value)">
+                    <span id="scroll-speed-value">0.05</span>
+                </div>
+                <div class="input-group">
+                    <label for="brightness">Brightness:</label>
+                    <input type="range" id="brightness" min="10" max="100" step="5" value="40"
+                        onchange="updateBrightness(this.value)">
+                    <span id="brightness-value">40</span>
+                </div>
+                <div class="input-group">
+                    <label for="calendar-refresh">Calendar Refresh (minutes):</label>
+                    <input type="number" id="calendar-refresh" min="5" max="120" value="30"
+                        onchange="updateCalendarRefresh(this.value)">
+                </div>
+
+                <!-- Colors -->
+                <h3>Colors</h3>
+                <div class="input-group">
+                    <label for="text-color">Message Text Color:</label>
+                    <input type="color" id="text-color" value="#ffffff" onchange="updateColors()">
+                </div>
+                <div class="input-group">
+                    <label for="department-color">Department Name Color:</label>
+                    <input type="color" id="department-color" value="#00ffff" onchange="updateColors()">
+                </div>
+                <div class="input-group">
+                    <label for="calendar-color">Calendar Events Color:</label>
+                    <input type="color" id="calendar-color" value="#00ffff" onchange="updateColors()">
+                </div>
+                <div class="input-group">
+                    <label for="clock-color">Clock Color:</label>
+                    <input type="color" id="clock-color" value="#00ff00" onchange="updateColors()">
+                </div>
+
+                <!-- Display Lines Configuration -->
+                <h3>Display Lines</h3>
+                <div id="display-lines">
+                    <div class="line-config" data-line="0">
+                        <label>Line 1:</label>
+                        <select class="line-type" onchange="updateLineConfig()">
+                            <option value="department">Department Name</option>
+                            <option value="message">Scrolling Message</option>
+                            <option value="calendar">Calendar Event</option>
+                            <option value="static">Static Text</option>
+                            <option value="disabled">Disabled</option>
+                        </select>
+                        <input type="text" class="line-content" placeholder="Content..." onchange="updateLineConfig()">
+                        <button onclick="moveLineUp(0)">↑</button>
+                        <button onclick="moveLineDown(0)">↓</button>
+                        <button onclick="removeLine(0)">✕</button>
+                    </div>
+                    <div class="line-config" data-line="1">
+                        <label>Line 2:</label>
+                        <select class="line-type" onchange="updateLineConfig()">
+                            <option value="department">Department Name</option>
+                            <option value="message" selected>Scrolling Message</option>
+                            <option value="calendar">Calendar Event</option>
+                            <option value="static">Static Text</option>
+                            <option value="disabled">Disabled</option>
+                        </select>
+                        <input type="text" class="line-content" placeholder="Content..." onchange="updateLineConfig()">
+                        <button onclick="moveLineUp(1)">↑</button>
+                        <button onclick="moveLineDown(1)">↓</button>
+                        <button onclick="removeLine(1)">✕</button>
+                    </div>
+                    <div class="line-config" data-line="2">
+                        <label>Line 3:</label>
+                        <select class="line-type" onchange="updateLineConfig()">
+                            <option value="department">Department Name</option>
+                            <option value="message">Scrolling Message</option>
+                            <option value="calendar" selected>Calendar Event</option>
+                            <option value="static">Static Text</option>
+                            <option value="disabled">Disabled</option>
+                        </select>
+                        <input type="text" class="line-content" placeholder="Content..." onchange="updateLineConfig()">
+                        <button onclick="moveLineUp(2)">↑</button>
+                        <button onclick="moveLineDown(2)">↓</button>
+                        <button onclick="removeLine(2)">✕</button>
+                    </div>
+                </div>
+                <button class="btn btn-secondary" onclick="addDisplayLine()">+ Add Line</button>
+            </div>
+
             <!-- System Controls -->
             <div class="section">
                 <h2>System Controls</h2>
-                <button class="btn" onclick="saveAllSettings()">💾 Save All Settings</button>
-                <button class="btn btn-secondary" onclick="loadAllSettings()">🔄 Reload Settings</button>
-                <button class="btn btn-secondary" onclick="exportConfig()">📤 Export Config</button>
-                <button class="btn btn-danger" onclick="resetSettings()">🔄 Reset to Defaults</button>
+                <button class="btn" onclick="saveAllSettings()">Save All Settings</button>
+                <button class="btn btn-secondary" onclick="loadAllSettings()">Reload Settings</button>
+                <button class="btn btn-secondary" onclick="exportConfig()">Export Config</button>
+                <button class="btn btn-danger" onclick="resetSettings()">Reset to Defaults</button>
             </div>
         </div>
     </div>
@@ -460,6 +734,31 @@
                 // Update form fields
                 document.getElementById('department-name').value = currentConfig.department_name || '';
 
+                // Load display settings
+                const scrollSpeed = currentConfig.display_settings?.scroll_speed || 0.05;
+                const brightness = currentConfig.matrix_options?.chain1?.brightness || 40;
+                const calendarRefresh = currentConfig.display_settings?.calendar_refresh_minutes || 30;
+
+                document.getElementById('scroll-speed').value = scrollSpeed;
+                document.getElementById('scroll-speed-value').textContent = scrollSpeed;
+                document.getElementById('brightness').value = brightness;
+                document.getElementById('brightness-value').textContent = brightness;
+                document.getElementById('calendar-refresh').value = calendarRefresh;
+
+                // Load colors
+                const textColor = currentConfig.display_settings?.text_color || [255, 255, 255];
+                const deptColor = currentConfig.display_settings?.department_color || [0, 255, 255];
+                const calColor = currentConfig.display_settings?.calendar_color || [0, 255, 255];
+                const clockColor = currentConfig.display_settings?.clock_color || [0, 255, 0];
+
+                document.getElementById('text-color').value = rgbToHex(textColor[0], textColor[1], textColor[2]);
+                document.getElementById('department-color').value = rgbToHex(deptColor[0], deptColor[1], deptColor[2]);
+                document.getElementById('calendar-color').value = rgbToHex(calColor[0], calColor[1], calColor[2]);
+                document.getElementById('clock-color').value = rgbToHex(clockColor[0], clockColor[1], clockColor[2]);
+
+                // Load display lines configuration
+                loadDisplayLines();
+
                 // Load messages and calendars
                 loadMessages();
                 loadCalendars();
@@ -477,13 +776,172 @@
             }
         }
 
+        function loadDisplayLines() {
+            const container = document.getElementById('display-lines');
+            const displayLines = currentConfig.display_lines || [
+                { type: 'department', content: '' },
+                { type: 'message', content: '' },
+                { type: 'calendar', content: '' }
+            ];
+
+            // Clear existing lines
+            container.innerHTML = '';
+
+            // Add lines from config
+            displayLines.forEach((line, index) => {
+                const lineDiv = document.createElement('div');
+                lineDiv.className = 'line-config';
+                lineDiv.setAttribute('data-line', index);
+                lineDiv.innerHTML = `
+                    <label>Line ${index + 1}:</label>
+                    <select class="line-type" onchange="updateLineConfig()">
+                        <option value="department" ${line.type === 'department' ? 'selected' : ''}>Department Name</option>
+                        <option value="message" ${line.type === 'message' ? 'selected' : ''}>Scrolling Message</option>
+                        <option value="calendar" ${line.type === 'calendar' ? 'selected' : ''}>Calendar Event</option>
+                        <option value="static" ${line.type === 'static' ? 'selected' : ''}>Static Text</option>
+                        <option value="disabled" ${line.type === 'disabled' ? 'selected' : ''}>Disabled</option>
+                    </select>
+                    <input type="text" class="line-content" placeholder="Content..." value="${line.content || ''}" onchange="updateLineConfig()">
+                    <button onclick="moveLineUp(${index})">↑</button>
+                    <button onclick="moveLineDown(${index})">↓</button>
+                    <button onclick="removeLine(${index})">✕</button>
+                `;
+                container.appendChild(lineDiv);
+            });
+        }
+
+        // Display Settings Functions
+        function updateScrollSpeed(value) {
+            document.getElementById('scroll-speed-value').textContent = value;
+            saveAllSettings();
+        }
+
+        function updateBrightness(value) {
+            document.getElementById('brightness-value').textContent = value;
+            saveAllSettings();
+        }
+
+        function updateCalendarRefresh(value) {
+            saveAllSettings();
+        }
+
+        function updateColors() {
+            saveAllSettings();
+        }
+
+        function hexToRgb(hex) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? [
+                parseInt(result[1], 16),
+                parseInt(result[2], 16),
+                parseInt(result[3], 16)
+            ] : [255, 255, 255];
+        }
+
+        function rgbToHex(r, g, b) {
+            return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+        }
+
+        function updateLineConfig() {
+            saveAllSettings();
+        }
+
+        function addDisplayLine() {
+            const container = document.getElementById('display-lines');
+            const lineCount = container.children.length;
+            const newLine = document.createElement('div');
+            newLine.className = 'line-config';
+            newLine.setAttribute('data-line', lineCount);
+            newLine.innerHTML = `
+                <label>Line ${lineCount + 1}:</label>
+                <select class="line-type" onchange="updateLineConfig()">
+                    <option value="department">Department Name</option>
+                    <option value="message">Scrolling Message</option>
+                    <option value="calendar">Calendar Event</option>
+                    <option value="static">Static Text</option>
+                    <option value="disabled" selected>Disabled</option>
+                </select>
+                <input type="text" class="line-content" placeholder="Content..." onchange="updateLineConfig()">
+                <button onclick="moveLineUp(${lineCount})">↑</button>
+                <button onclick="moveLineDown(${lineCount})">↓</button>
+                <button onclick="removeLine(${lineCount})">✕</button>
+            `;
+            container.appendChild(newLine);
+            updateLineNumbers();
+        }
+
+        function removeLine(index) {
+            const container = document.getElementById('display-lines');
+            const lines = container.children;
+            if (lines.length > 1) {
+                lines[index].remove();
+                updateLineNumbers();
+                updateLineConfig();
+            }
+        }
+
+        function moveLineUp(index) {
+            const container = document.getElementById('display-lines');
+            const lines = container.children;
+            if (index > 0) {
+                container.insertBefore(lines[index], lines[index - 1]);
+                updateLineNumbers();
+                updateLineConfig();
+            }
+        }
+
+        function moveLineDown(index) {
+            const container = document.getElementById('display-lines');
+            const lines = container.children;
+            if (index < lines.length - 1) {
+                container.insertBefore(lines[index + 1], lines[index]);
+                updateLineNumbers();
+                updateLineConfig();
+            }
+        }
+
+        function updateLineNumbers() {
+            const container = document.getElementById('display-lines');
+            Array.from(container.children).forEach((line, index) => {
+                line.setAttribute('data-line', index);
+                line.querySelector('label').textContent = `Line ${index + 1}:`;
+                const buttons = line.querySelectorAll('button');
+                buttons[0].setAttribute('onclick', `moveLineUp(${index})`);
+                buttons[1].setAttribute('onclick', `moveLineDown(${index})`);
+                buttons[2].setAttribute('onclick', `removeLine(${index})`);
+            });
+        }
+
         async function saveAllSettings() {
             try {
+                // Gather display lines configuration
+                const displayLines = [];
+                const lineConfigs = document.querySelectorAll('.line-config');
+                lineConfigs.forEach(line => {
+                    displayLines.push({
+                        type: line.querySelector('.line-type').value,
+                        content: line.querySelector('.line-content').value
+                    });
+                });
+
                 // Gather all current settings
                 const settings = {
                     department_name: document.getElementById('department-name').value,
                     scrolling_messages: currentConfig.scrolling_messages || [],
-                    calendar_urls: currentConfig.calendar_urls || []
+                    calendar_urls: currentConfig.calendar_urls || [],
+                    display_settings: {
+                        scroll_speed: parseFloat(document.getElementById('scroll-speed').value),
+                        calendar_refresh_minutes: parseInt(document.getElementById('calendar-refresh').value),
+                        text_color: hexToRgb(document.getElementById('text-color').value),
+                        department_color: hexToRgb(document.getElementById('department-color').value),
+                        calendar_color: hexToRgb(document.getElementById('calendar-color').value),
+                        clock_color: hexToRgb(document.getElementById('clock-color').value)
+                    },
+                    display_lines: displayLines,
+                    matrix_options: {
+                        chain1: { brightness: parseInt(document.getElementById('brightness').value) },
+                        chain2: { brightness: parseInt(document.getElementById('brightness').value) }
+                    }
                 };
 
                 const response = await fetch('/api/config', {
