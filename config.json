@@ -1,24 +1,24 @@
 {
-  "department_name": "ENGINEERING",
+  "department_name": "PLATFORM 38 1/2",
   "scrolling_messages": [
-    "Welcome to the Engineering Department!",
-    "Safety first - always wear your PPE",
-    "Team meeting every Thursday at 2 PM",
-    "Check Slack for project updates",
-    "Have a productive day!"
+    "Safe System Assessments",
+    "TIAs",
+    "ITS",
+    "Public Transport",
+    "PParking, Walking & Cycline"
   ],
   "calendar_urls": [
-    "https://example.com/engineering-calendar.ics"
+    "https://www.officeholidays.com/ics-all/new-zealand"
   ],
   "web_port": 5000,
   "matrix_options": {
     "chain1": {
       "rows": 64,
-      "cols": 64,
-      "chain_length": 4,
+      "cols": 128,
+      "chain_length": 2,
       "parallel": 1,
       "brightness": 75,
-      "gpio_mapping": "adafruit-hat"
+      "gpio_mapping": "regular"
     },
     "chain2": {
       "rows": 64,
@@ -26,7 +26,7 @@
       "chain_length": 4,
       "parallel": 1,
       "brightness": 75,
-      "gpio_mapping": "adafruit-hat"
+      "gpio_mapping": "regular"
     }
   },
   "display_settings": {

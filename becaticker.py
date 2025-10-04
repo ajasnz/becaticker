@@ -56,30 +56,32 @@ class Config:
     def __init__(self, config_file: str = "config.json"):
         self.config_file = config_file
         self.default_config = {
-            "department_name": "DEPARTMENT",
+            "department_name": "PLATFORM 38 1/2",
             "scrolling_messages": [
-                "Welcome to our department!",
-                "Have a great day!",
-                "Check our website for updates",
+                "Safe System Assessments",
+                "TIAs",
+                "ITS",
+                "Public Transport",
+                "PParking, Walking & Cycline",
             ],
-            "calendar_urls": [],
+            "calendar_urls": ["https://www.officeholidays.com/ics-all/new-zealand"],
             "web_port": 5000,
             "matrix_options": {
                 "chain1": {
+                    "rows": 64,
+                    "cols": 128,
+                    "chain_length": 2,
+                    "parallel": 1,
+                    "brightness": 75,
+                    "gpio_mapping": "regular",
+                },
+                "chain2": {
                     "rows": 64,
                     "cols": 64,
                     "chain_length": 4,
                     "parallel": 1,
                     "brightness": 75,
-                    "gpio_mapping": "adafruit-hat",
-                },
-                "chain2": {
-                    "rows": 64,
-                    "cols": 64,
-                    "chain_length": 4,  # 2x2 arrangement
-                    "parallel": 1,
-                    "brightness": 75,
-                    "gpio_mapping": "adafruit-hat",
+                    "gpio_mapping": "regular",
                 },
             },
             "display_settings": {
@@ -90,7 +92,7 @@ class Config:
                 "calendar_refresh_minutes": 30,
             },
             "arcade_mode": {
-                "enabled": False,
+                "enabled": true,
                 "trigger_command": "/usr/bin/emulationstation",
             },
         }

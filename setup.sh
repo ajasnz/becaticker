@@ -28,7 +28,7 @@ sudo -u $ACTUAL_USER python3 -m venv "$VENV_PATH"
 sudo -u $ACTUAL_USER bash -c "
     source '$VENV_PATH/bin/activate'
     pip install --upgrade pip
-    pip install flask icalendar pillow cython
+    pip install flask icalendar pillow cython requests
     
     # Build RGB matrix library  
     cd '$SCRIPT_DIR/hzeller'
@@ -62,19 +62,59 @@ systemctl enable becaticker
 # Create default config if needed
 [ ! -f config.json ] && sudo -u $ACTUAL_USER cat > config.json << 'EOF'
 {
-    "department_name": "Your Department",
-    "messages": ["Welcome!", "Check calendar for events"],
-    "calendar_urls": [],
-    "matrix_options": {
-        "rows": 64, "cols": 64, "chain_length": 4, "parallel": 2,
-        "hardware_mapping": "adafruit-hat", "brightness": 60
+  "department_name": "PLATFORM 38 1/2",
+  "scrolling_messages": [
+    "Safe System Assessments",
+    "TIAs",
+    "ITS",
+    "Public Transport",
+    "PParking, Walking & Cycline"
+  ],
+  "calendar_urls": [
+    "https://www.officeholidays.com/ics-all/new-zealand"
+  ],
+  "web_port": 5000,
+  "matrix_options": {
+    "chain1": {
+      "rows": 64,
+      "cols": 128,
+      "chain_length": 2,
+      "parallel": 1,
+      "brightness": 75,
+      "gpio_mapping": "regular"
     },
-    "display_settings": {
-        "scroll_speed": 2,
-        "message_color": {"red": 255, "green": 255, "blue": 255},
-        "department_color": {"red": 0, "green": 255, "blue": 255},
-        "clock_color": {"red": 255, "green": 255, "blue": 255}
+    "chain2": {
+      "rows": 64,
+      "cols": 64,
+      "chain_length": 4,
+      "parallel": 1,
+      "brightness": 75,
+      "gpio_mapping": "regular"
     }
+  },
+  "display_settings": {
+    "text_color": [
+      255,
+      255,
+      255
+    ],
+    "clock_color": [
+      0,
+      255,
+      0
+    ],
+    "background_color": [
+      0,
+      0,
+      0
+    ],
+    "scroll_speed": 0.05,
+    "calendar_refresh_minutes": 30
+  },
+  "arcade_mode": {
+    "enabled": true,
+    "trigger_command": "/usr/bin/emulationstation"
+  }
 }
 EOF
 
