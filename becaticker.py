@@ -562,9 +562,9 @@ class BecaTicker:
         options.cols = chain_config.get("cols", 64)
         options.chain_length = chain_config.get("chain_length", 4)
         options.parallel = chain_config.get("parallel", 1)
-        options.brightness = chain_config.get("brightness", 75)
-        options.hardware_mapping = chain_config.get("gpio_mapping", "adafruit-hat")
-        options.gpio_slowdown = 1
+        options.brightness = chain_config.get("brightness", 50)
+        options.hardware_mapping = chain_config.get("hardware_mapping", "regular")
+        options.gpio_slowdown = chain_config.get("gpio_slowdown", 4)
         options.drop_privileges = False
 
         return RGBMatrix(options=options)

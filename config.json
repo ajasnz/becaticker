@@ -17,16 +17,20 @@
       "cols": 128,
       "chain_length": 2,
       "parallel": 1,
-      "brightness": 75,
-      "gpio_mapping": "regular"
+      "brightness": 50,
+      "gpio_mapping": "regular",
+      "gpio_slowdown": 4,
+      "hardware_mapping": "regular"
     },
     "chain2": {
       "rows": 64,
       "cols": 64,
       "chain_length": 4,
       "parallel": 1,
-      "brightness": 75,
-      "gpio_mapping": "regular"
+      "brightness": 50,
+      "gpio_mapping": "regular",
+      "gpio_slowdown": 4,
+      "hardware_mapping": "regular"
     }
   },
   "display_settings": {
@@ -49,7 +53,7 @@
     "calendar_refresh_minutes": 30
   },
   "arcade_mode": {
-    "enabled": true,
+    "enabled": "True",
     "trigger_command": "/usr/bin/emulationstation"
   }
 }

@@ -112,7 +112,7 @@ systemctl enable becaticker
     "calendar_refresh_minutes": 30
   },
   "arcade_mode": {
-    "enabled": true,
+    "enabled": True,
     "trigger_command": "/usr/bin/emulationstation"
   }
 }
