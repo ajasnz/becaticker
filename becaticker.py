@@ -32,7 +32,14 @@ from PIL import Image, ImageDraw, ImageFont
 sys.path.append(
     os.path.join(os.path.dirname(__file__), "hzeller", "bindings", "python")
 )
-from rgbmatrix import RGBMatrix, RGBMatrixOptions, graphics
+
+try:
+    from rgbmatrix import RGBMatrix, RGBMatrixOptions, graphics
+except ImportError as e:
+    logger.error(f"Failed to import RGB matrix library: {e}")
+    logger.error("Please ensure the RGB matrix library is properly installed.")
+    logger.error("Run './build_rgb_matrix.sh' to build the library.")
+    sys.exit(1)
 
 # Configure logging
 logging.basicConfig(
@@ -451,7 +458,7 @@ class ClockDisplay:
                 self.canvas.SetPixel(
                     x,
                     y,
-                    *self.clock_color.red,
+                    self.clock_color.red,
                     self.clock_color.green,
                     self.clock_color.blue,
                 )
