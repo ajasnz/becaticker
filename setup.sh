@@ -15,23 +15,24 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 echo "Setting up BecaTicker..."
 
-# Install system packages
-apt update
-apt install -y python3 python3-pip python3-venv python3-dev git build-essential
+# Install system packages including cython3
+apt update  
+apt install -y python3 python3-pip python3-venv python3-dev git build-essential cython3
 
 # Create virtual environment
 VENV_PATH="$SCRIPT_DIR/venv"
 [ -d "$VENV_PATH" ] && rm -rf "$VENV_PATH"
 sudo -u $ACTUAL_USER python3 -m venv "$VENV_PATH"
 
-# Install Python packages
+# Install Python packages and build RGB library
 sudo -u $ACTUAL_USER bash -c "
     source '$VENV_PATH/bin/activate'
     pip install --upgrade pip
     pip install flask icalendar pillow cython
     
-    # Build RGB matrix library
+    # Build RGB matrix library  
     cd '$SCRIPT_DIR/hzeller'
+    make clean
     make build-python PYTHON='$VENV_PATH/bin/python'
     cd bindings/python
     '$VENV_PATH/bin/python' setup.py install
