@@ -28,7 +28,7 @@ sudo -u $ACTUAL_USER python3 -m venv "$VENV_PATH"
 sudo -u $ACTUAL_USER bash -c "
     source '$VENV_PATH/bin/activate'
     pip install --upgrade pip
-    pip install flask icalendar pillow cython requests
+    pip install flask icalendar pillow cython requests python-dateutil
     
     # Build RGB matrix library  
     cd '$SCRIPT_DIR/hzeller'

@@ -62,7 +62,7 @@ class Config:
                 "TIAs",
                 "ITS",
                 "Public Transport",
-                "PParking, Walking & Cycline",
+                "Parking, Walking & Cycling",
             ],
             "calendar_urls": ["https://www.officeholidays.com/ics-all/new-zealand"],
             "web_port": 5000,
