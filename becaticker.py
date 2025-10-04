@@ -387,11 +387,16 @@ class TextDisplay:
                 if line_type == "disabled":
                     continue
 
-                # Draw background color bar if specified
+                # Calculate text Y position - center it within the background bar if present
+                text_y_position = y_position
                 if line_bg_color:
-                    self._draw_background_bar(
-                        y_position - 8, line_spacing, line_bg_color
-                    )
+                    # Background bar spans from (y_position - 8) to (y_position - 8 + line_spacing)
+                    # Center the text within this range
+                    bar_start = y_position - 8
+                    bar_height = line_spacing
+                    text_y_position = bar_start + (bar_height // 2) + 4  # +4 for font baseline
+                    
+                    self._draw_background_bar(bar_start, bar_height, line_bg_color)
 
                 if line_type == "spacer":
                     # Spacer just adds space, no content
@@ -406,7 +411,7 @@ class TextDisplay:
                         dept_name,
                         line_font,
                         colors["department"],
-                        y_position,
+                        text_y_position,
                         line_text_size,
                     )
 
@@ -414,7 +419,7 @@ class TextDisplay:
                     line_font = self._get_font(line_config.get("font"))
                     line_text_size = line_config.get("text_size", 1)
                     self._draw_scrolling_message(
-                        y_position,
+                        text_y_position,
                         colors["text"],
                         line_scroll_speed,
                         line_font,
@@ -425,7 +430,7 @@ class TextDisplay:
                     line_font = self._get_font(line_config.get("font"))
                     line_text_size = line_config.get("text_size", 1)
                     self._draw_calendar_events(
-                        y_position,
+                        text_y_position,
                         colors["calendar"],
                         line_scroll_speed,
                         line_font,
@@ -440,7 +445,7 @@ class TextDisplay:
                             line_content,
                             line_font,
                             colors["text"],
-                            y_position,
+                            text_y_position,
                             line_text_size,
                         )
 
@@ -879,9 +884,14 @@ class BecaTicker:
         options.parallel = chain_config.get("parallel", 1)
         options.brightness = chain_config.get("brightness", 40)
         options.hardware_mapping = chain_config.get("hardware_mapping", "regular")
-        options.gpio_slowdown = chain_config.get("gpio_slowdown", 8)
+        options.gpio_slowdown = chain_config.get("gpio_slowdown", 2)
         options.drop_privileges = False
         options.disable_hardware_pulsing = True
+        
+        # Additional anti-flickering options for long chains
+        if chain_config.get("chain_length", 1) >= 4:
+            options.limit_refresh_rate_hz = 120  # Limit refresh rate for stability
+            options.show_refresh_rate = False     # Don't show refresh rate counter
 
         return RGBMatrix(options=options)
 

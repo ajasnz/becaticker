@@ -19,7 +19,7 @@
       "parallel": 1,
       "brightness": 40,
       "gpio_mapping": "regular",
-      "gpio_slowdown": 8,
+      "gpio_slowdown": 2,
       "hardware_mapping": "regular"
     },
     "chain2": {
@@ -29,7 +29,7 @@
       "parallel": 1,
       "brightness": 40,
       "gpio_mapping": "regular",
-      "gpio_slowdown": 8,
+      "gpio_slowdown": 2,
       "hardware_mapping": "regular"
     }
   },
