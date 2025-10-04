@@ -616,22 +616,26 @@
                     <div class="color-control">
                         <label>Text:</label>
                         <input type="color" id="text-color" value="#ffffff" onchange="updateColors()">
-                        <input type="text" id="text-color-hex" value="#ffffff" onchange="updateColorsFromHex()" maxlength="7">
+                        <input type="text" id="text-color-hex" value="#ffffff" onchange="updateColorsFromHex()"
+                            maxlength="7">
                     </div>
                     <div class="color-control">
                         <label>Department:</label>
                         <input type="color" id="department-color" value="#00ffff" onchange="updateColors()">
-                        <input type="text" id="department-color-hex" value="#00ffff" onchange="updateColorsFromHex()" maxlength="7">
+                        <input type="text" id="department-color-hex" value="#00ffff" onchange="updateColorsFromHex()"
+                            maxlength="7">
                     </div>
                     <div class="color-control">
                         <label>Calendar:</label>
                         <input type="color" id="calendar-color" value="#00ffff" onchange="updateColors()">
-                        <input type="text" id="calendar-color-hex" value="#00ffff" onchange="updateColorsFromHex()" maxlength="7">
+                        <input type="text" id="calendar-color-hex" value="#00ffff" onchange="updateColorsFromHex()"
+                            maxlength="7">
                     </div>
                     <div class="color-control">
                         <label>Clock:</label>
                         <input type="color" id="clock-color" value="#00ff00" onchange="updateColors()">
-                        <input type="text" id="clock-color-hex" value="#00ff00" onchange="updateColorsFromHex()" maxlength="7">
+                        <input type="text" id="clock-color-hex" value="#00ff00" onchange="updateColorsFromHex()"
+                            maxlength="7">
                     </div>
                 </div>
 
@@ -772,7 +776,7 @@
                 const deptColorHex = document.getElementById('department-color-hex');
                 const calColorHex = document.getElementById('calendar-color-hex');
                 const clockColorHex = document.getElementById('clock-color-hex');
-                
+
                 if (textColorHex) textColorHex.value = textHex;
                 if (deptColorHex) deptColorHex.value = deptHex;
                 if (calColorHex) calColorHex.value = calHex;
@@ -854,7 +858,7 @@
             const deptColorHex = document.getElementById('department-color-hex');
             const calColorHex = document.getElementById('calendar-color-hex');
             const clockColorHex = document.getElementById('clock-color-hex');
-            
+
             if (textColorHex && textColorHex.value.match(/^#[0-9A-Fa-f]{6}$/)) {
                 document.getElementById('text-color').value = textColorHex.value;
             }
@@ -867,7 +871,7 @@
             if (clockColorHex && clockColorHex.value.match(/^#[0-9A-Fa-f]{6}$/)) {
                 document.getElementById('clock-color').value = clockColorHex.value;
             }
-            
+
             updateColors();
         }
 
@@ -876,24 +880,24 @@
             if (colorUpdateTimer) {
                 clearTimeout(colorUpdateTimer);
             }
-            
+
             // Update hex text fields to match color pickers
             const textColor = document.getElementById('text-color').value;
             const deptColor = document.getElementById('department-color').value;
             const calColor = document.getElementById('calendar-color').value;
             const clockColor = document.getElementById('clock-color').value;
-            
+
             // Update text inputs if they exist
             const textColorHex = document.getElementById('text-color-hex');
             const deptColorHex = document.getElementById('department-color-hex');
             const calColorHex = document.getElementById('calendar-color-hex');
             const clockColorHex = document.getElementById('clock-color-hex');
-            
+
             if (textColorHex) textColorHex.value = textColor;
             if (deptColorHex) deptColorHex.value = deptColor;
             if (calColorHex) calColorHex.value = calColor;
             if (clockColorHex) clockColorHex.value = clockColor;
-            
+
             // Save with a small delay to avoid rapid saves while dragging
             colorUpdateTimer = setTimeout(() => {
                 saveAllSettings();

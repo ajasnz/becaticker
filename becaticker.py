@@ -642,7 +642,7 @@ class BecaTicker:
             try:
                 new_config = request.json
                 logger.info(f"Received config update: {new_config}")
-                
+
                 # Update specific configuration sections
                 if "department_name" in new_config:
                     self.config.set("department_name", new_config["department_name"])
@@ -652,27 +652,37 @@ class BecaTicker:
                     )
                 if "calendar_urls" in new_config:
                     self.config.set("calendar_urls", new_config["calendar_urls"])
-                
+
                 # Handle new display settings
                 if "display_settings" in new_config:
                     display_settings = new_config["display_settings"]
                     for key, value in display_settings.items():
                         self.config.set(key, value)
                         logger.info(f"Updated display setting {key}: {value}")
-                
+
                 # Handle display lines configuration
                 if "display_lines" in new_config:
                     self.config.set("display_lines", new_config["display_lines"])
                     logger.info(f"Updated display lines: {new_config['display_lines']}")
-                
+
                 # Handle matrix options
                 if "matrix_options" in new_config:
                     matrix_options = new_config["matrix_options"]
                     # Update brightness settings
-                    if "chain1" in matrix_options and "brightness" in matrix_options["chain1"]:
-                        self.config.set("brightness", matrix_options["chain1"]["brightness"])
-                        logger.info(f"Updated brightness: {matrix_options['chain1']['brightness']}")
-                    if "chain2" in matrix_options and "brightness" in matrix_options["chain2"]:
+                    if (
+                        "chain1" in matrix_options
+                        and "brightness" in matrix_options["chain1"]
+                    ):
+                        self.config.set(
+                            "brightness", matrix_options["chain1"]["brightness"]
+                        )
+                        logger.info(
+                            f"Updated brightness: {matrix_options['chain1']['brightness']}"
+                        )
+                    if (
+                        "chain2" in matrix_options
+                        and "brightness" in matrix_options["chain2"]
+                    ):
                         # For now, use the same brightness for both chains
                         pass
 
