@@ -258,7 +258,7 @@ class TextDisplay:
         self.matrix = matrix
         self.config = config
         self.calendar_manager = calendar_manager
-        self.canvas = matrix.CreateFrameCanvas()
+        self.canvas = None  # Will be set by main loop
         self.row_offset = row_offset  # For parallel chain support
 
         # Load fonts
@@ -360,7 +360,8 @@ class TextDisplay:
 
     def update_display(self) -> None:
         """Update the text display with current information."""
-        self.canvas.Clear()
+        if not self.canvas:
+            return
 
         # Get current colors
         colors = self._get_colors()
@@ -458,8 +459,7 @@ class TextDisplay:
 
                 y_position += line_spacing
 
-        # Swap buffers
-        self.canvas = self.matrix.SwapOnVSync(self.canvas)
+        # Note: Canvas swap is handled by main display loop
 
     def _draw_background_bar(self, y: int, height: int, color_rgb: List[int]) -> None:
         """Draw a full-width background color bar."""
@@ -677,7 +677,7 @@ class ClockDisplay:
     def __init__(self, matrix: RGBMatrix, config: Config, row_offset: int = 0):
         self.matrix = matrix
         self.config = config
-        self.canvas = matrix.CreateFrameCanvas()
+        self.canvas = None  # Will be set by main loop
         self.row_offset = row_offset  # For parallel chain support
 
         # Clock settings
@@ -696,11 +696,12 @@ class ClockDisplay:
         if self.arcade_mode:
             # In arcade mode, the display is handled by the game system
             # Just keep the matrix clear for the game to use
-            self.canvas.Clear()
-            self.canvas = self.matrix.SwapOnVSync(self.canvas)
+            if self.canvas:
+                self.canvas.Clear()
             return
 
-        self.canvas.Clear()
+        if not self.canvas:
+            return
 
         now = datetime.now()
 
@@ -720,8 +721,7 @@ class ClockDisplay:
         # Draw center dot
         self.canvas.SetPixel(self.center_x, self.center_y, 255, 255, 255)
 
-        # Swap buffers
-        self.canvas = self.matrix.SwapOnVSync(self.canvas)
+        # Note: Canvas swap is handled by main display loop
 
     def enter_arcade_mode(self) -> bool:
         """Enter arcade mode and launch RetroPie."""
@@ -1094,12 +1094,26 @@ class BecaTicker:
         """Main display update loop."""
         logger.info("Display update loop started")
 
+        # Create shared canvas for both displays
+        canvas = self.matrix.CreateFrameCanvas()
+
         while self.running:
             try:
-                # Update displays
+                # Clear the shared canvas
+                canvas.Clear()
+
+                # Set canvas for both displays
+                self.text_display.canvas = canvas
+                if self.clock_display:
+                    self.clock_display.canvas = canvas
+
+                # Update displays (they draw to the shared canvas)
                 self.text_display.update_display()
                 if self.clock_display:
                     self.clock_display.update_display()
+
+                # Swap the canvas buffers once
+                canvas = self.matrix.SwapOnVSync(canvas)
 
                 # Small delay to prevent excessive CPU usage
                 time.sleep(0.1)
