@@ -876,16 +876,16 @@ class ClockDisplay:
 
 class UserManager:
     """Manages user authentication with hashed passwords and JSON storage."""
-    
+
     def __init__(self, db_file: str = "users.db"):
         self.db_file = db_file
         self.users = self.load_users()
-        
+
     def load_users(self) -> Dict:
         """Load users from JSON file or create default admin user."""
         try:
             if os.path.exists(self.db_file):
-                with open(self.db_file, 'r') as f:
+                with open(self.db_file, "r") as f:
                     return json.load(f)
             else:
                 # Create default admin user with hashed password
@@ -895,98 +895,100 @@ class UserManager:
                         "role": "admin",
                         "created": datetime.now().isoformat(),
                         "last_login": None,
-                        "active": True
+                        "active": True,
                     }
                 }
                 self.save_users(default_users)
-                logger.info("Created default admin user (username: admin, password: becaticker123)")
+                logger.info(
+                    "Created default admin user (username: admin, password: becaticker123)"
+                )
                 return default_users
         except Exception as e:
             logger.error(f"Error loading users: {e}")
             return {}
-    
+
     def save_users(self, users: Dict = None) -> None:
         """Save users to JSON file."""
         try:
             users_to_save = users or self.users
-            with open(self.db_file, 'w') as f:
+            with open(self.db_file, "w") as f:
                 json.dump(users_to_save, f, indent=2)
             logger.info("Users database saved successfully")
         except Exception as e:
             logger.error(f"Error saving users: {e}")
-    
+
     def hash_password(self, password: str) -> str:
         """Hash a password using SHA256 with salt."""
         salt = secrets.token_hex(16)
         password_hash = hashlib.sha256((password + salt).encode()).hexdigest()
         return f"{salt}:{password_hash}"
-    
+
     def verify_password(self, password: str, password_hash: str) -> bool:
         """Verify a password against its hash."""
         try:
-            salt, hash_part = password_hash.split(':')
+            salt, hash_part = password_hash.split(":")
             return hashlib.sha256((password + salt).encode()).hexdigest() == hash_part
         except ValueError:
             return False
-    
+
     def authenticate_user(self, username: str, password: str) -> Optional[Dict]:
         """Authenticate a user and return user info if successful."""
         if username not in self.users:
             return None
-            
+
         user = self.users[username]
         if not user.get("active", True):
             return None
-            
+
         if self.verify_password(password, user["password_hash"]):
             # Update last login
             self.users[username]["last_login"] = datetime.now().isoformat()
             self.save_users()
-            
+
             # Return user info without password hash
             user_info = user.copy()
             user_info.pop("password_hash", None)
             user_info["username"] = username
             return user_info
-            
+
         return None
-    
+
     def create_user(self, username: str, password: str, role: str = "user") -> bool:
         """Create a new user."""
         if username in self.users:
             return False
-            
+
         self.users[username] = {
             "password_hash": self.hash_password(password),
             "role": role,
             "created": datetime.now().isoformat(),
             "last_login": None,
-            "active": True
+            "active": True,
         }
         self.save_users()
         logger.info(f"Created new user: {username}")
         return True
-    
+
     def update_user_password(self, username: str, new_password: str) -> bool:
         """Update a user's password."""
         if username not in self.users:
             return False
-            
+
         self.users[username]["password_hash"] = self.hash_password(new_password)
         self.save_users()
         logger.info(f"Updated password for user: {username}")
         return True
-    
+
     def delete_user(self, username: str) -> bool:
         """Delete a user (mark as inactive)."""
         if username not in self.users or username == "admin":  # Protect admin user
             return False
-            
+
         self.users[username]["active"] = False
         self.save_users()
         logger.info(f"Deactivated user: {username}")
         return True
-    
+
     def list_users(self) -> List[Dict]:
         """List all active users (without password hashes)."""
         users = []
@@ -997,7 +999,7 @@ class UserManager:
                 user.pop("password_hash", None)
                 users.append(user)
         return users
-    
+
     def is_admin(self, username: str) -> bool:
         """Check if a user has admin role."""
         if username in self.users:
@@ -1006,34 +1008,39 @@ class UserManager:
 
 
 # Authentication Configuration
-AUTH_CONFIG = {
-    "enabled": True,
-    "session_timeout": 3600  # 1 hour in seconds
-}
+AUTH_CONFIG = {"enabled": True, "session_timeout": 3600}  # 1 hour in seconds
 
 
 def login_required(f):
     """Decorator to require authentication for routes."""
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not AUTH_CONFIG["enabled"]:
             return f(*args, **kwargs)
-            
+
         if "authenticated" not in session or not session["authenticated"]:
             if request.is_json:
-                return jsonify({"status": "error", "message": "Authentication required"}), 401
+                return (
+                    jsonify({"status": "error", "message": "Authentication required"}),
+                    401,
+                )
             return redirect(url_for("login"))
-            
+
         # Check session timeout
         if "login_time" in session:
             login_time = session["login_time"]
             if time.time() - login_time > AUTH_CONFIG["session_timeout"]:
                 session.clear()
                 if request.is_json:
-                    return jsonify({"status": "error", "message": "Session expired"}), 401
+                    return (
+                        jsonify({"status": "error", "message": "Session expired"}),
+                        401,
+                    )
                 return redirect(url_for("login"))
-                
+
         return f(*args, **kwargs)
+
     return decorated_function
 
 
@@ -1256,14 +1263,23 @@ class BecaTicker:
                     session["login_time"] = time.time()
 
                     if request.is_json:
-                        return jsonify({"status": "success", "message": "Login successful"})
+                        return jsonify(
+                            {"status": "success", "message": "Login successful"}
+                        )
                     else:
                         return redirect("/")
                 else:
                     if request.is_json:
-                        return jsonify({"status": "error", "message": "Invalid credentials"}), 401
+                        return (
+                            jsonify(
+                                {"status": "error", "message": "Invalid credentials"}
+                            ),
+                            401,
+                        )
                     else:
-                        return render_template("login.html", error="Invalid username or password")
+                        return render_template(
+                            "login.html", error="Invalid username or password"
+                        )
 
             return render_template("login.html")
 
@@ -1271,7 +1287,9 @@ class BecaTicker:
         def logout():
             session.clear()
             if request.is_json:
-                return jsonify({"status": "success", "message": "Logged out successfully"})
+                return jsonify(
+                    {"status": "success", "message": "Logged out successfully"}
+                )
             else:
                 return redirect("/login")
 
@@ -1284,21 +1302,26 @@ class BecaTicker:
                     session.clear()
                     authenticated = False
 
-            return jsonify({
-                "authenticated": authenticated,
-                "username": session.get("username", ""),
-                "user_role": session.get("user_role", "user"),
-                "is_admin": session.get("user_role") == "admin",
-                "auth_enabled": AUTH_CONFIG["enabled"]
-            })
+            return jsonify(
+                {
+                    "authenticated": authenticated,
+                    "username": session.get("username", ""),
+                    "user_role": session.get("user_role", "user"),
+                    "is_admin": session.get("user_role") == "admin",
+                    "auth_enabled": AUTH_CONFIG["enabled"],
+                }
+            )
 
         # User management routes (admin only)
         @self.app.route("/api/users", methods=["GET"])
         @login_required
         def list_users():
             if session.get("user_role") != "admin":
-                return jsonify({"status": "error", "message": "Admin access required"}), 403
-            
+                return (
+                    jsonify({"status": "error", "message": "Admin access required"}),
+                    403,
+                )
+
             users = self.user_manager.list_users()
             return jsonify(users)
 
@@ -1306,37 +1329,80 @@ class BecaTicker:
         @login_required
         def create_user():
             if session.get("user_role") != "admin":
-                return jsonify({"status": "error", "message": "Admin access required"}), 403
-            
+                return (
+                    jsonify({"status": "error", "message": "Admin access required"}),
+                    403,
+                )
+
             data = request.get_json()
             username = data.get("username", "").strip()
             password = data.get("password", "")
             role = data.get("role", "user")
-            
+
             if not username or not password:
-                return jsonify({"status": "error", "message": "Username and password required"}), 400
-            
+                return (
+                    jsonify(
+                        {"status": "error", "message": "Username and password required"}
+                    ),
+                    400,
+                )
+
             if len(password) < 6:
-                return jsonify({"status": "error", "message": "Password must be at least 6 characters"}), 400
-            
+                return (
+                    jsonify(
+                        {
+                            "status": "error",
+                            "message": "Password must be at least 6 characters",
+                        }
+                    ),
+                    400,
+                )
+
             if self.user_manager.create_user(username, password, role):
-                return jsonify({"status": "success", "message": f"User '{username}' created successfully"})
+                return jsonify(
+                    {
+                        "status": "success",
+                        "message": f"User '{username}' created successfully",
+                    }
+                )
             else:
-                return jsonify({"status": "error", "message": "Username already exists"}), 400
+                return (
+                    jsonify({"status": "error", "message": "Username already exists"}),
+                    400,
+                )
 
         @self.app.route("/api/users/<username>", methods=["DELETE"])
         @login_required
         def delete_user(username):
             if session.get("user_role") != "admin":
-                return jsonify({"status": "error", "message": "Admin access required"}), 403
-            
+                return (
+                    jsonify({"status": "error", "message": "Admin access required"}),
+                    403,
+                )
+
             if username == "admin":
-                return jsonify({"status": "error", "message": "Cannot delete admin user"}), 400
-            
+                return (
+                    jsonify({"status": "error", "message": "Cannot delete admin user"}),
+                    400,
+                )
+
             if self.user_manager.delete_user(username):
-                return jsonify({"status": "success", "message": f"User '{username}' deleted successfully"})
+                return jsonify(
+                    {
+                        "status": "success",
+                        "message": f"User '{username}' deleted successfully",
+                    }
+                )
             else:
-                return jsonify({"status": "error", "message": "User not found or cannot be deleted"}), 400
+                return (
+                    jsonify(
+                        {
+                            "status": "error",
+                            "message": "User not found or cannot be deleted",
+                        }
+                    ),
+                    400,
+                )
 
         @self.app.route("/api/users/<username>/password", methods=["PUT"])
         @login_required
@@ -1344,18 +1410,28 @@ class BecaTicker:
             # Users can change their own password, admins can change any password
             current_user = session.get("username")
             is_admin = session.get("user_role") == "admin"
-            
+
             if current_user != username and not is_admin:
                 return jsonify({"status": "error", "message": "Unauthorized"}), 403
-            
+
             data = request.get_json()
             new_password = data.get("new_password", "")
-            
+
             if len(new_password) < 6:
-                return jsonify({"status": "error", "message": "Password must be at least 6 characters"}), 400
-            
+                return (
+                    jsonify(
+                        {
+                            "status": "error",
+                            "message": "Password must be at least 6 characters",
+                        }
+                    ),
+                    400,
+                )
+
             if self.user_manager.update_user_password(username, new_password):
-                return jsonify({"status": "success", "message": "Password updated successfully"})
+                return jsonify(
+                    {"status": "success", "message": "Password updated successfully"}
+                )
             else:
                 return jsonify({"status": "error", "message": "User not found"}), 400
 

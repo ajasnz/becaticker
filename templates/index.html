@@ -557,7 +557,8 @@
         <div class="header">
             <h1>BecaTicker Control Panel</h1>
             <p>Manage your LED matrix display system</p>
-            <button onclick="logout()" style="position: absolute; top: 20px; right: 20px; padding: 8px 16px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; border-radius: 4px; cursor: pointer; font-size: 14px;">Logout</button>
+            <button onclick="logout()"
+                style="position: absolute; top: 20px; right: 20px; padding: 8px 16px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; border-radius: 4px; cursor: pointer; font-size: 14px;">Logout</button>
         </div>
 
         <div class="content">
@@ -657,7 +658,7 @@
             <!-- User Management (Admin Only) -->
             <div class="section" id="userManagementSection" style="display: none;">
                 <h2>👥 User Management</h2>
-                
+
                 <div style="margin-bottom: 20px;">
                     <h3>Create New User</h3>
                     <div style="display: grid; grid-template-columns: 1fr 1fr auto auto; gap: 10px; align-items: end;">
@@ -679,7 +680,7 @@
                         <button class="btn btn-primary" onclick="createUser()">Create User</button>
                     </div>
                 </div>
-                
+
                 <div>
                     <h3>Existing Users</h3>
                     <table id="usersTable" style="width: 100%; border-collapse: collapse; margin-top: 10px;">
@@ -1674,7 +1675,7 @@
                         'Content-Type': 'application/json',
                     }
                 });
-                
+
                 if (response.ok) {
                     window.location.href = '/login';
                 } else {
@@ -1696,7 +1697,7 @@
                 const response = await fetch('/api/auth/status');
                 const data = await response.json();
                 isAdminUser = data.is_admin;
-                
+
                 if (isAdminUser) {
                     document.getElementById('userManagementSection').style.display = 'block';
                     loadUsers();
@@ -1708,19 +1709,19 @@
 
         async function loadUsers() {
             if (!isAdminUser) return;
-            
+
             try {
                 const response = await fetch('/api/users');
                 const users = await response.json();
-                
+
                 const tbody = document.getElementById('usersTableBody');
                 tbody.innerHTML = '';
-                
+
                 users.forEach(user => {
                     const row = document.createElement('tr');
                     const createdDate = new Date(user.created).toLocaleDateString();
                     const lastLogin = user.last_login ? new Date(user.last_login).toLocaleDateString() : 'Never';
-                    
+
                     row.innerHTML = `
                         <td style="padding: 8px; border: 1px solid #dee2e6;">${user.username}</td>
                         <td style="padding: 8px; border: 1px solid #dee2e6;">
@@ -1731,10 +1732,10 @@
                         <td style="padding: 8px; border: 1px solid #dee2e6;">${createdDate}</td>
                         <td style="padding: 8px; border: 1px solid #dee2e6;">${lastLogin}</td>
                         <td style="padding: 8px; border: 1px solid #dee2e6;">
-                            ${user.username !== 'admin' ? 
-                                `<button class="btn btn-sm btn-danger" onclick="deleteUser('${user.username}')">Delete</button>` :
-                                '<span style="color: #6c757d; font-size: 12px;">Protected</span>'
-                            }
+                            ${user.username !== 'admin' ?
+                            `<button class="btn btn-sm btn-danger" onclick="deleteUser('${user.username}')">Delete</button>` :
+                            '<span style="color: #6c757d; font-size: 12px;">Protected</span>'
+                        }
                         </td>
                     `;
                     tbody.appendChild(row);
@@ -1749,17 +1750,17 @@
             const username = document.getElementById('newUsername').value.trim();
             const password = document.getElementById('newPassword').value;
             const role = document.getElementById('newUserRole').value;
-            
+
             if (!username || !password) {
                 showAlert('Please enter username and password', 'error');
                 return;
             }
-            
+
             if (password.length < 6) {
                 showAlert('Password must be at least 6 characters', 'error');
                 return;
             }
-            
+
             try {
                 const response = await fetch('/api/users', {
                     method: 'POST',
@@ -1772,9 +1773,9 @@
                         role: role
                     })
                 });
-                
+
                 const result = await response.json();
-                
+
                 if (result.status === 'success') {
                     showAlert(result.message, 'success');
                     document.getElementById('newUsername').value = '';
@@ -1794,14 +1795,14 @@
             if (!confirm(`Are you sure you want to delete user "${username}"?`)) {
                 return;
             }
-            
+
             try {
                 const response = await fetch(`/api/users/${username}`, {
                     method: 'DELETE'
                 });
-                
+
                 const result = await response.json();
-                
+
                 if (result.status === 'success') {
                     showAlert(result.message, 'success');
                     loadUsers();
@@ -1815,7 +1816,7 @@
         }
 
         // Initialize user role check when page loads
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             // Add a small delay to ensure other initialization is complete
             setTimeout(checkUserRole, 500);
         });
