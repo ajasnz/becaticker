@@ -14,7 +14,7 @@
   "matrix_options": {
     "rows": 64,
     "cols": 64,
-    "chain_length": 4,
+    "chain_length": 5,
     "parallel": 2,
     "brightness": 40,
     "gpio_mapping": "regular",
