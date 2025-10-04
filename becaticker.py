@@ -69,7 +69,7 @@ class Config:
             "matrix_options": {
                 "chain1": {
                     "rows": 64,
-                    "cols": 128,
+                    "cols": 64,
                     "chain_length": 2,
                     "parallel": 1,
                     "brightness": 75,
