@@ -49,7 +49,7 @@
       0,
       0
     ],
-    "scroll_speed": 0.05,
+    "scroll_speed": 2,
     "calendar_refresh_minutes": 30
   },
   "arcade_mode": {

@@ -84,11 +84,14 @@ class Config:
             },
             "display_settings": {
                 "text_color": [255, 255, 255],
+                "department_color": [0, 255, 255],
+                "calendar_color": [255, 255, 0],
                 "clock_color": [0, 255, 0],
                 "background_color": [0, 0, 0],
-                "scroll_speed": 0.9,
+                "scroll_speed": 1.0,
                 "calendar_refresh_minutes": 30,
             },
+            "display_lines": [],
             "arcade_mode": {
                 "enabled": True,
                 "trigger_command": "/usr/bin/emulationstation",
@@ -638,6 +641,8 @@ class BecaTicker:
         def update_config():
             try:
                 new_config = request.json
+                logger.info(f"Received config update: {new_config}")
+                
                 # Update specific configuration sections
                 if "department_name" in new_config:
                     self.config.set("department_name", new_config["department_name"])
@@ -647,6 +652,33 @@ class BecaTicker:
                     )
                 if "calendar_urls" in new_config:
                     self.config.set("calendar_urls", new_config["calendar_urls"])
+                
+                # Handle new display settings
+                if "display_settings" in new_config:
+                    display_settings = new_config["display_settings"]
+                    for key, value in display_settings.items():
+                        self.config.set(key, value)
+                        logger.info(f"Updated display setting {key}: {value}")
+                
+                # Handle display lines configuration
+                if "display_lines" in new_config:
+                    self.config.set("display_lines", new_config["display_lines"])
+                    logger.info(f"Updated display lines: {new_config['display_lines']}")
+                
+                # Handle matrix options
+                if "matrix_options" in new_config:
+                    matrix_options = new_config["matrix_options"]
+                    # Update brightness settings
+                    if "chain1" in matrix_options and "brightness" in matrix_options["chain1"]:
+                        self.config.set("brightness", matrix_options["chain1"]["brightness"])
+                        logger.info(f"Updated brightness: {matrix_options['chain1']['brightness']}")
+                    if "chain2" in matrix_options and "brightness" in matrix_options["chain2"]:
+                        # For now, use the same brightness for both chains
+                        pass
+
+                # Save the configuration to file
+                self.config.save_config()
+                logger.info("Configuration saved successfully")
 
                 return jsonify(
                     {"status": "success", "message": "Configuration updated"}

@@ -612,21 +612,27 @@
 
                 <!-- Colors -->
                 <h3>Colors</h3>
-                <div class="input-group">
-                    <label for="text-color">Message Text Color:</label>
-                    <input type="color" id="text-color" value="#ffffff" onchange="updateColors()">
-                </div>
-                <div class="input-group">
-                    <label for="department-color">Department Name Color:</label>
-                    <input type="color" id="department-color" value="#00ffff" onchange="updateColors()">
-                </div>
-                <div class="input-group">
-                    <label for="calendar-color">Calendar Events Color:</label>
-                    <input type="color" id="calendar-color" value="#00ffff" onchange="updateColors()">
-                </div>
-                <div class="input-group">
-                    <label for="clock-color">Clock Color:</label>
-                    <input type="color" id="clock-color" value="#00ff00" onchange="updateColors()">
+                <div class="color-grid">
+                    <div class="color-control">
+                        <label>Text:</label>
+                        <input type="color" id="text-color" value="#ffffff" onchange="updateColors()">
+                        <input type="text" id="text-color-hex" value="#ffffff" onchange="updateColorsFromHex()" maxlength="7">
+                    </div>
+                    <div class="color-control">
+                        <label>Department:</label>
+                        <input type="color" id="department-color" value="#00ffff" onchange="updateColors()">
+                        <input type="text" id="department-color-hex" value="#00ffff" onchange="updateColorsFromHex()" maxlength="7">
+                    </div>
+                    <div class="color-control">
+                        <label>Calendar:</label>
+                        <input type="color" id="calendar-color" value="#00ffff" onchange="updateColors()">
+                        <input type="text" id="calendar-color-hex" value="#00ffff" onchange="updateColorsFromHex()" maxlength="7">
+                    </div>
+                    <div class="color-control">
+                        <label>Clock:</label>
+                        <input type="color" id="clock-color" value="#00ff00" onchange="updateColors()">
+                        <input type="text" id="clock-color-hex" value="#00ff00" onchange="updateColorsFromHex()" maxlength="7">
+                    </div>
                 </div>
 
                 <!-- Display Lines Configuration -->
@@ -751,10 +757,26 @@
                 const calColor = currentConfig.display_settings?.calendar_color || [0, 255, 255];
                 const clockColor = currentConfig.display_settings?.clock_color || [0, 255, 0];
 
-                document.getElementById('text-color').value = rgbToHex(textColor[0], textColor[1], textColor[2]);
-                document.getElementById('department-color').value = rgbToHex(deptColor[0], deptColor[1], deptColor[2]);
-                document.getElementById('calendar-color').value = rgbToHex(calColor[0], calColor[1], calColor[2]);
-                document.getElementById('clock-color').value = rgbToHex(clockColor[0], clockColor[1], clockColor[2]);
+                const textHex = rgbToHex(textColor[0], textColor[1], textColor[2]);
+                const deptHex = rgbToHex(deptColor[0], deptColor[1], deptColor[2]);
+                const calHex = rgbToHex(calColor[0], calColor[1], calColor[2]);
+                const clockHex = rgbToHex(clockColor[0], clockColor[1], clockColor[2]);
+
+                document.getElementById('text-color').value = textHex;
+                document.getElementById('department-color').value = deptHex;
+                document.getElementById('calendar-color').value = calHex;
+                document.getElementById('clock-color').value = clockHex;
+
+                // Update hex text inputs if they exist
+                const textColorHex = document.getElementById('text-color-hex');
+                const deptColorHex = document.getElementById('department-color-hex');
+                const calColorHex = document.getElementById('calendar-color-hex');
+                const clockColorHex = document.getElementById('clock-color-hex');
+                
+                if (textColorHex) textColorHex.value = textHex;
+                if (deptColorHex) deptColorHex.value = deptHex;
+                if (calColorHex) calColorHex.value = calHex;
+                if (clockColorHex) clockColorHex.value = clockHex;
 
                 // Load display lines configuration
                 loadDisplayLines();
@@ -825,8 +847,57 @@
             saveAllSettings();
         }
 
+        let colorUpdateTimer;
+        function updateColorsFromHex() {
+            // Update color pickers from hex text inputs
+            const textColorHex = document.getElementById('text-color-hex');
+            const deptColorHex = document.getElementById('department-color-hex');
+            const calColorHex = document.getElementById('calendar-color-hex');
+            const clockColorHex = document.getElementById('clock-color-hex');
+            
+            if (textColorHex && textColorHex.value.match(/^#[0-9A-Fa-f]{6}$/)) {
+                document.getElementById('text-color').value = textColorHex.value;
+            }
+            if (deptColorHex && deptColorHex.value.match(/^#[0-9A-Fa-f]{6}$/)) {
+                document.getElementById('department-color').value = deptColorHex.value;
+            }
+            if (calColorHex && calColorHex.value.match(/^#[0-9A-Fa-f]{6}$/)) {
+                document.getElementById('calendar-color').value = calColorHex.value;
+            }
+            if (clockColorHex && clockColorHex.value.match(/^#[0-9A-Fa-f]{6}$/)) {
+                document.getElementById('clock-color').value = clockColorHex.value;
+            }
+            
+            updateColors();
+        }
+
         function updateColors() {
-            saveAllSettings();
+            // Clear any existing timer
+            if (colorUpdateTimer) {
+                clearTimeout(colorUpdateTimer);
+            }
+            
+            // Update hex text fields to match color pickers
+            const textColor = document.getElementById('text-color').value;
+            const deptColor = document.getElementById('department-color').value;
+            const calColor = document.getElementById('calendar-color').value;
+            const clockColor = document.getElementById('clock-color').value;
+            
+            // Update text inputs if they exist
+            const textColorHex = document.getElementById('text-color-hex');
+            const deptColorHex = document.getElementById('department-color-hex');
+            const calColorHex = document.getElementById('calendar-color-hex');
+            const clockColorHex = document.getElementById('clock-color-hex');
+            
+            if (textColorHex) textColorHex.value = textColor;
+            if (deptColorHex) deptColorHex.value = deptColor;
+            if (calColorHex) calColorHex.value = calColor;
+            if (clockColorHex) clockColorHex.value = clockColor;
+            
+            // Save with a small delay to avoid rapid saves while dragging
+            colorUpdateTimer = setTimeout(() => {
+                saveAllSettings();
+            }, 500);
         }
 
         function hexToRgb(hex) {
@@ -957,8 +1028,21 @@
                 const result = await response.json();
                 showAlert('Settings saved successfully!');
 
-                // Reload to confirm changes
-                loadAllSettings();
+                // Update currentConfig with saved values without full reload
+                currentConfig = {
+                    ...currentConfig,
+                    ...{
+                        department_name: document.getElementById('department-name').value,
+                        display_settings: {
+                            scroll_speed: parseFloat(document.getElementById('scroll-speed').value),
+                            calendar_refresh_minutes: parseInt(document.getElementById('calendar-refresh').value),
+                            text_color: hexToRgb(document.getElementById('text-color').value),
+                            department_color: hexToRgb(document.getElementById('department-color').value),
+                            calendar_color: hexToRgb(document.getElementById('calendar-color').value),
+                            clock_color: hexToRgb(document.getElementById('clock-color').value)
+                        }
+                    }
+                };
             } catch (error) {
                 console.error('Error saving settings:', error);
                 showAlert('Failed to save settings: ' + error.message, 'error');
