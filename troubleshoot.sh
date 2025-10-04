@@ -1,4 +1,4 @@
-#!/bin/bash
+s#!/bin/bash
 
 # BecaTicker Troubleshooting Script
 # This script helps diagnose common issues with the BecaTicker setup
@@ -37,6 +37,9 @@ echo ""
 echo "🔨 RGB Matrix Library Check:"
 echo "   Library file: $([ -f "hzeller/lib/librgbmatrix.a" ] && echo 'EXISTS' || echo 'MISSING')"
 echo "   Python bindings: $([ -f "hzeller/bindings/python/rgbmatrix.so" ] && echo 'EXISTS' || echo 'MISSING')"
+echo "   Cython source: $([ -f "hzeller/bindings/python/rgbmatrix/core.pyx" ] && echo 'EXISTS' || echo 'MISSING')"
+echo "   Cython compiled: $([ -f "hzeller/bindings/python/rgbmatrix/core.cpp" ] && echo 'EXISTS' || echo 'MISSING')"
+echo "   Python import test: $(python3 -c "import rgbmatrix" 2>/dev/null && echo 'SUCCESS' || echo 'FAILED')"
 echo ""
 
 # Check configuration files
@@ -96,7 +99,16 @@ if [ ! -d "venv" ]; then
 fi
 
 if [ ! -f "hzeller/lib/librgbmatrix.a" ]; then
-    echo "   • Build RGB matrix library: cd hzeller && make build-python PYTHON=\$(which python3)"
+    echo "   • Build RGB matrix library: ./build_rgb_matrix.sh"
+fi
+
+if [ ! -f "hzeller/bindings/python/rgbmatrix/core.cpp" ]; then
+    echo "   • Missing Cython compiled file. Install Cython: pip install Cython"
+    echo "   • Then run: ./build_rgb_matrix.sh"
+fi
+
+if ! python3 -c "import rgbmatrix" 2>/dev/null; then
+    echo "   • Python bindings not working. Try: ./build_rgb_matrix.sh"
 fi
 
 if [ ! -f "/etc/systemd/system/becaticker.service" ]; then

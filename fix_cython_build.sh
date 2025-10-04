@@ -41,24 +41,56 @@ echo "🔄 Attempting build with virtual environment Python..."
 if PYTHON=$(which python3) make build-python; then
     echo "✅ Build successful!"
 else
-    echo "⚠️  Standard build failed, trying direct Python binding installation..."
+    echo "⚠️  Standard build failed, trying manual Cython compilation..."
     
-    # Try installing the Python bindings directly via pip
-    cd bindings/python
-    if pip install .; then
-        echo "✅ Python bindings installed successfully via pip!"
-    else
-        echo "❌ All methods failed. Let's try a system-wide install..."
-        cd ../..
-        sudo make install-python
-        if [ $? -eq 0 ]; then
-            echo "✅ System-wide installation successful!"
+    # Go to the Python bindings directory and manually build
+    cd bindings/python/rgbmatrix
+    
+    # Check if core.pyx exists and manually compile it
+    if [ -f "core.pyx" ]; then
+        echo "🔨 Manually compiling Cython files..."
+        
+        # Try using cython3 first, then fall back to cython
+        if command -v cython3 &> /dev/null; then
+            cython3 --cplus -o core.cpp core.pyx
+        elif python3 -c "import Cython" &> /dev/null; then
+            python3 -c "from Cython.Build import cythonize; cythonize('core.pyx', language_level=3)"
         else
-            echo "❌ Build completely failed. Please check the error messages above."
+            echo "❌ No Cython available for manual compilation"
+            cd ../../..
             exit 1
         fi
+        
+        # Check if core.cpp was created
+        if [ -f "core.cpp" ]; then
+            echo "✅ Cython compilation successful!"
+            cd ..
+            
+            # Now try pip install again
+            if pip install .; then
+                echo "✅ Python bindings installed successfully after manual Cython compilation!"
+            else
+                echo "⚠️  Pip install still failed, trying system-wide install..."
+                cd ../..
+                sudo make install-python
+                if [ $? -eq 0 ]; then
+                    echo "✅ System-wide installation successful!"
+                else
+                    echo "❌ All build methods failed."
+                    exit 1
+                fi
+            fi
+            cd ../..
+        else
+            echo "❌ Manual Cython compilation failed"
+            cd ../../..
+            exit 1
+        fi
+    else
+        echo "❌ core.pyx file not found"
+        cd ../../..
+        exit 1
     fi
-    cd ../..
 fi
 
 cd ..
