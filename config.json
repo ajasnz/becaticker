@@ -17,9 +17,9 @@
       "cols": 64,
       "chain_length": 2,
       "parallel": 1,
-      "brightness": 50,
+      "brightness": 40,
       "gpio_mapping": "regular",
-      "gpio_slowdown": 4,
+      "gpio_slowdown": 8,
       "hardware_mapping": "regular"
     },
     "chain2": {
@@ -27,9 +27,9 @@
       "cols": 64,
       "chain_length": 4,
       "parallel": 1,
-      "brightness": 50,
+      "brightness": 40,
       "gpio_mapping": "regular",
-      "gpio_slowdown": 4,
+      "gpio_slowdown": 8,
       "hardware_mapping": "regular"
     }
   },
