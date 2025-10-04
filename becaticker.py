@@ -56,13 +56,11 @@ class Config:
     def __init__(self, config_file: str = "config.json"):
         self.config_file = config_file
         self.default_config = {
-            "department_name": "PLATFORM 38 1/2",
+            "department_name": "SYSTEM ERROR",
             "scrolling_messages": [
-                "Safe System Assessments",
-                "TIAs",
-                "ITS",
-                "Public Transport",
-                "Parking, Walking & Cycling",
+                "Failed to load configuration file",
+                "Try restarting the system",
+                "Or visit http://becaticker.local:5000 to upload your own message",
             ],
             "calendar_urls": ["https://www.officeholidays.com/ics-all/new-zealand"],
             "web_port": 5000,
@@ -88,7 +86,7 @@ class Config:
                 "text_color": [255, 255, 255],
                 "clock_color": [0, 255, 0],
                 "background_color": [0, 0, 0],
-                "scroll_speed": 0.05,
+                "scroll_speed": 0.9,
                 "calendar_refresh_minutes": 30,
             },
             "arcade_mode": {
@@ -173,8 +171,10 @@ class CalendarManager:
 
                 cal = Calendar.from_ical(response.content)
 
+                event_count = 0
                 for component in cal.walk():
                     if component.name == "VEVENT":
+                        event_count += 1
                         event = {
                             "summary": str(component.get("summary", "No Title")),
                             "start": component.get("dtstart").dt,
@@ -186,7 +186,11 @@ class CalendarManager:
                             "description": str(component.get("description", "")),
                         }
 
-                        # Only include future events within next 7 days
+                        logger.info(
+                            f"Processing event: {event['summary']} at {event['start']}"
+                        )
+
+                        # Only include future events within next 30 days (increased from 7)
                         if isinstance(event["start"], datetime):
                             start_time = event["start"]
                         else:
@@ -208,15 +212,23 @@ class CalendarManager:
                             now = now.replace(tzinfo=None)
 
                         try:
+                            # Increased from 7 days to 30 days to catch more events
                             if start_time > now and start_time < now + timedelta(
-                                days=7
+                                days=30
                             ):
                                 all_events.append(event)
+                                logger.info(f"Added event: {event['summary']}")
+                            else:
+                                logger.info(
+                                    f"Filtered out event: {event['summary']} (start: {start_time}, now: {now})"
+                                )
                         except TypeError as te:
                             logger.warning(
                                 f"Skipping event due to datetime comparison error: {te}"
                             )
                             continue
+
+                logger.info(f"Processed {event_count} events from calendar")
 
             except Exception as e:
                 logger.error(f"Error fetching calendar from {url}: {e}")

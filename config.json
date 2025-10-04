@@ -1,14 +1,14 @@
 {
   "department_name": "PLATFORM 38 1/2",
   "scrolling_messages": [
-    "Safe System Assessments",
-    "TIAs",
-    "ITS",
-    "Public Transport",
-    "Parking, Walking & Cycling"
+    "Safe System Assessments | TIAs | ITS | Public Transport | Parking, Walking & Cycling",
+    "It is always possible to aglutenate multiple separate problems into a single complex interdependent solution. In most casesthis is a bad idea. - RFC 1925",
+    "It is easier to move a problem around (for example, by moving the problem to a different part of the overall network architecture) than it is to solve it. (6a) (corollary). It is always possible to add another level of indirection.",
+    "With sufficient thrust, pigs fly just fine. However, this is not necessarily a good idea.It is hard to be sure where they are going to land, and it could be dangerous sitting under them as they fly overhead. - RFC 1925"
   ],
   "calendar_urls": [
-    "https://www.officeholidays.com/ics-all/new-zealand"
+    "https://www.officeholidays.com/ics-all/new-zealand",
+    "https://outlook.office365.com/owa/calendar/83254b997f75435aa130c2a8992530b7@taplab.nz/70e7f863de554b62abcb884c9e7b1da85878165353884635813/calendar.ics"
   ],
   "web_port": 5000,
   "matrix_options": {
