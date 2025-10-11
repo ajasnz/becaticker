@@ -715,26 +715,23 @@ class ClockDisplay:
 
     def _map_to_physical_panel(self, logical_x: int, logical_y: int) -> tuple:
         """
-        Map logical coordinates for V-mapper:Z configuration.
-
-        V-mapper:Z with 2x2 physical arrangement (128x128):
-        - P0: Bottom-Left (normal, chain input)
-        - P1: Bottom-Right (FLIPPED upside down)
-        - P2: Top-Left (normal)
-        - P3: Top-Right (FLIPPED upside down)
-
-        The hzeller library handles the physical mapping automatically.
-        We use the full 128x128 coordinate space.
+        Simple coordinate passthrough for hzeller U-mapper.
+        
+        The hzeller U-mapper handles all the physical panel mapping automatically:
+        - Panel arrangement and chain flow
+        - Coordinate transformations 
+        - Upside-down panel handling
+        
+        We just need to ensure coordinates are within bounds and add the row offset.
         """
         # Ensure coordinates are within bounds
         logical_x = max(0, min(127, logical_x))
         logical_y = max(0, min(127, logical_y))
-
-        # For V-mapper:Z, we use the logical coordinates directly
-        # The library handles the panel arrangement and flipping
+        
+        # Pass coordinates directly to hzeller U-mapper with row offset
         matrix_x = logical_x
         matrix_y = self.row_offset + logical_y
-
+        
         return matrix_x, matrix_y
 
     def update_display(self) -> None:
@@ -1100,8 +1097,8 @@ class BecaTicker:
         options.brightness = chain_config.get("brightness", 40)
         options.hardware_mapping = chain_config.get("hardware_mapping", "regular")
         options.gpio_slowdown = chain_config.get("gpio_slowdown", 2)
-        # Use V-mapper:Z for chain 2 (clock display) - vertical arrangement with alternating flip
-        options.pixel_mapper_config = "V-mapper:Z"
+        # Use built-in U-mapper from hzeller for chain 2 (clock display)
+        options.pixel_mapper_config = "U-mapper"
         options.drop_privileges = False
         options.disable_hardware_pulsing = True
 

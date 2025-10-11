@@ -4,7 +4,7 @@ Simple dual-chain RGB LED matrix display for Raspberry Pi.
 
 ## What it does
 
-- **Chain 1**: 4×1 panels (256×64) - scrolling text and calendar events
+- **Chain 1**: 5×1 panels (256×64) - scrolling text and calendar events
 - **Chain 2**: 2×2 panels (128×128) - analog clock
 - **Web interface**: configure everything via browser
 
