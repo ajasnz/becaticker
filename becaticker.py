@@ -746,21 +746,19 @@ class ClockDisplay:
         local_x = logical_x % 64
         local_y = logical_y % 64
 
-        # Map to linear chain with snake wiring pattern:
-        # Physical: Panel0, Panel1, Panel3, Panel2 (snake pattern)
-        # Logical:  TL,     TR,     BR,     BL
+        # Map to linear chain: Panel0, Panel1, Panel2, Panel3
+        # Physical wiring: TL -> TR -> BL -> BR (as you wired it)
+        # Logical layout:  TL    TR    BL    BR
         if panel_y == 0:  # Top row
             if panel_x == 0:  # Top-left (Panel 0)
                 panel_offset = 0
             else:  # Top-right (Panel 1)
                 panel_offset = 64
         else:  # Bottom row
-            if (
-                panel_x == 0
-            ):  # Bottom-left (Panel 2) -> Actually Panel 3 in physical chain
-                panel_offset = 192  # Changed from 128 to 192
-            else:  # Bottom-right (Panel 3) -> Actually Panel 2 in physical chain
-                panel_offset = 128  # Changed from 192 to 128
+            if panel_x == 0:  # Bottom-left (Panel 2)
+                panel_offset = 128
+            else:  # Bottom-right (Panel 3)
+                panel_offset = 192
 
         physical_x = local_x + panel_offset
         physical_y = local_y + self.row_offset
