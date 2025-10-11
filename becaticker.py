@@ -715,7 +715,7 @@ class ClockDisplay:
         self.center_x = self.width // 2
         self.center_y = self.height // 2
         self.clock_radius = min(self.width, self.height) // 2 - 10
-        
+
         # For 2x2 layout, we need to map logical coordinates to physical panel coordinates
         # Each panel is 64x64, arranged as:
         # [Panel0: 0,0-63,63] [Panel1: 64,0-127,63]
@@ -724,43 +724,45 @@ class ClockDisplay:
 
     def _map_2x2_coordinates(self, logical_x: int, logical_y: int) -> tuple:
         """Map logical 2x2 coordinates to physical panel coordinates.
-        
+
         For a 2x2 arrangement of 64x64 panels in a chain:
         Chain 2 with 4 panels arranged as 2x2 but connected linearly:
-        
+
         Physical chain layout: [Panel0][Panel1][Panel2][Panel3] = 256 pixels wide
         Logical 2x2 layout:
         [Panel0: 0,0-63,63] [Panel1: 64,0-127,63]
         [Panel2: 0,64-63,127] [Panel3: 64,64-127,127]
-        
+
         Returns (physical_x, physical_y) for the canvas.
         """
         # For a simple linear mapping, map 2x2 to linear chain
         # This assumes the panels are wired: TopLeft, TopRight, BottomLeft, BottomRight
-        
+
         # Determine which panel (0-3) based on logical coordinates
         panel_x = logical_x // 64  # 0 or 1
         panel_y = logical_y // 64  # 0 or 1
-        
+
         # Position within the panel (0-63, 0-63)
         local_x = logical_x % 64
         local_y = logical_y % 64
-        
-        # Map to linear chain: Panel0, Panel1, Panel2, Panel3
+
+        # Map to linear chain with snake wiring pattern:
+        # Physical: Panel0, Panel1, Panel3, Panel2 (snake pattern)
+        # Logical:  TL,     TR,     BR,     BL
         if panel_y == 0:  # Top row
-            if panel_x == 0:  # Top-left (Panel 0)
+            if panel_x == 0:  # Top-left (Panel 0) 
                 panel_offset = 0
             else:  # Top-right (Panel 1)
                 panel_offset = 64
-        else:  # Bottom row  
-            if panel_x == 0:  # Bottom-left (Panel 2)
-                panel_offset = 128
-            else:  # Bottom-right (Panel 3)
-                panel_offset = 192
-        
+        else:  # Bottom row
+            if panel_x == 0:  # Bottom-left (Panel 2) -> Actually Panel 3 in physical chain
+                panel_offset = 192  # Changed from 128 to 192
+            else:  # Bottom-right (Panel 3) -> Actually Panel 2 in physical chain
+                panel_offset = 128  # Changed from 192 to 128
+
         physical_x = local_x + panel_offset
         physical_y = local_y + self.row_offset
-                
+
         return physical_x, physical_y
 
     def _set_pixel(self, logical_x: int, logical_y: int, color: graphics.Color) -> None:
@@ -769,7 +771,9 @@ class ClockDisplay:
             physical_x, physical_y = self._map_2x2_coordinates(logical_x, logical_y)
             # Make sure we don't exceed canvas bounds
             if physical_x < self.canvas.width and physical_y < self.canvas.height:
-                self.canvas.SetPixel(physical_x, physical_y, color.red, color.green, color.blue)
+                self.canvas.SetPixel(
+                    physical_x, physical_y, color.red, color.green, color.blue
+                )
 
     def _get_colors(self):
         """Get current colors from configuration."""
@@ -814,11 +818,11 @@ class ClockDisplay:
 
         if display_type == "clock":
             self._draw_analog_clock(now, colors)
-            
+
             # Add digital time if enabled
             if self.config.get("second_display.settings.show_digital", True):
                 self._draw_digital_time(now, colors)
-                
+
             # Add date if enabled
             if self.config.get("second_display.settings.show_date", True):
                 self._draw_date(now, colors)
@@ -829,38 +833,38 @@ class ClockDisplay:
         """Draw a test pattern to verify 2x2 coordinate mapping."""
         # Draw borders around each panel
         panel_color = graphics.Color(255, 0, 0)  # Red borders
-        
+
         # Panel 0 (top-left): border at 0,0 to 63,63
         for x in range(64):
-            self._set_pixel(x, 0, panel_color)      # Top border
-            self._set_pixel(x, 63, panel_color)     # Bottom border
+            self._set_pixel(x, 0, panel_color)  # Top border
+            self._set_pixel(x, 63, panel_color)  # Bottom border
         for y in range(64):
-            self._set_pixel(0, y, panel_color)      # Left border  
-            self._set_pixel(63, y, panel_color)     # Right border
-            
+            self._set_pixel(0, y, panel_color)  # Left border
+            self._set_pixel(63, y, panel_color)  # Right border
+
         # Panel 1 (top-right): border at 64,0 to 127,63
         for x in range(64, 128):
-            self._set_pixel(x, 0, panel_color)      # Top border
-            self._set_pixel(x, 63, panel_color)     # Bottom border
+            self._set_pixel(x, 0, panel_color)  # Top border
+            self._set_pixel(x, 63, panel_color)  # Bottom border
         for y in range(64):
-            self._set_pixel(64, y, panel_color)     # Left border
-            self._set_pixel(127, y, panel_color)    # Right border
-            
-        # Panel 2 (bottom-left): border at 0,64 to 63,127  
+            self._set_pixel(64, y, panel_color)  # Left border
+            self._set_pixel(127, y, panel_color)  # Right border
+
+        # Panel 2 (bottom-left): border at 0,64 to 63,127
         for x in range(64):
-            self._set_pixel(x, 64, panel_color)     # Top border
-            self._set_pixel(x, 127, panel_color)    # Bottom border
+            self._set_pixel(x, 64, panel_color)  # Top border
+            self._set_pixel(x, 127, panel_color)  # Bottom border
         for y in range(64, 128):
-            self._set_pixel(0, y, panel_color)      # Left border
-            self._set_pixel(63, y, panel_color)     # Right border
-            
+            self._set_pixel(0, y, panel_color)  # Left border
+            self._set_pixel(63, y, panel_color)  # Right border
+
         # Panel 3 (bottom-right): border at 64,64 to 127,127
         for x in range(64, 128):
-            self._set_pixel(x, 64, panel_color)     # Top border
-            self._set_pixel(x, 127, panel_color)    # Bottom border
+            self._set_pixel(x, 64, panel_color)  # Top border
+            self._set_pixel(x, 127, panel_color)  # Bottom border
         for y in range(64, 128):
-            self._set_pixel(64, y, panel_color)     # Left border
-            self._set_pixel(127, y, panel_color)    # Right border
+            self._set_pixel(64, y, panel_color)  # Left border
+            self._set_pixel(127, y, panel_color)  # Right border
 
     def _draw_analog_clock(self, now: datetime, colors: dict) -> None:
         """Draw analog clock face with hands."""
@@ -896,7 +900,7 @@ class ClockDisplay:
             text_width = len(num_text) * 6  # Approximate width
             logical_x = num_x - text_width // 2
             logical_y = num_y + 3
-            
+
             # Map logical coordinates to physical coordinates for text
             physical_x, physical_y = self._map_2x2_coordinates(logical_x, logical_y)
             graphics.DrawText(
@@ -961,7 +965,7 @@ class ClockDisplay:
         text_width = len(time_str) * 9  # Approximate width for medium font
         logical_x = self.center_x - text_width // 2
         logical_y = self.center_y + self.clock_radius + 15
-        
+
         # Map logical coordinates to physical coordinates for text
         # For now, place text in the center panel area (simplified approach)
         if logical_x >= 0 and logical_x < 64 and logical_y >= 0 and logical_y < 64:
