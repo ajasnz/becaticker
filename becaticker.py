@@ -869,17 +869,39 @@ class AnalogClock:
                 error += dx
 
     def _set_pixel(self, x: int, y: int, color: graphics.Color) -> None:
-        """Set a pixel with bounds checking and row offset."""
-        # Apply row offset for parallel chain support
-        adjusted_y = y + self.row_offset
-
-        # Bounds checking
-        if (
-            0 <= x < self.clock_width
-            and self.row_offset <= adjusted_y < self.row_offset + self.clock_height
-            and self.canvas
+        """Set a pixel with bounds checking and proper 2x2 panel mapping."""
+        # Bounds checking for logical 128x128 coordinate space
+        if not (
+            0 <= x < self.clock_width and 0 <= y < self.clock_height and self.canvas
         ):
-            self.canvas.SetPixel(x, adjusted_y, color.red, color.green, color.blue)
+            return
+
+        # Map logical 128x128 coordinates to actual 2x2 panel layout
+        # Chain order: tl -> bl -> br -> tr (as specified by user)
+        # Logical layout:    Physical mapping to parallel chain 2:
+        # [TL] [TR]    -->   Panel 1 (TL): rows 64-127,  cols 0-63
+        # [BL] [BR]    -->   Panel 2 (BL): rows 128-191, cols 0-63
+        #              -->   Panel 3 (BR): rows 192-255, cols 0-63
+        #              -->   Panel 4 (TR): rows 256-319, cols 0-63
+
+        if x < 64 and y < 64:
+            # Top-left panel (Panel 1)
+            actual_x = x
+            actual_y = y + self.row_offset  # rows 64-127
+        elif x < 64 and y >= 64:
+            # Bottom-left panel (Panel 2)
+            actual_x = x
+            actual_y = (y - 64) + self.row_offset + 64  # rows 128-191
+        elif x >= 64 and y >= 64:
+            # Bottom-right panel (Panel 3)
+            actual_x = x - 64
+            actual_y = (y - 64) + self.row_offset + 128  # rows 192-255
+        else:
+            # Top-right panel (Panel 4)
+            actual_x = x - 64
+            actual_y = y + self.row_offset + 192  # rows 256-319
+
+        self.canvas.SetPixel(actual_x, actual_y, color.red, color.green, color.blue)
 
 
 class UserManager:
