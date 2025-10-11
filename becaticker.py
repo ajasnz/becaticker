@@ -73,28 +73,15 @@ class Config:
             "calendar_urls": ["https://www.officeholidays.com/ics-all/new-zealand"],
             "web_port": 5000,
             "matrix_options": {
-                "chain1": {
-                    "rows": 64,
-                    "cols": 64,
-                    "chain_length": 5,
-                    "parallel": 1,
-                    "brightness": 40,
-                    "gpio_mapping": "regular",
-                    "gpio_slowdown": 4,
-                    "hardware_mapping": "regular",
-                    "pixel_mapper_config": "",
-                },
-                "chain2": {
-                    "rows": 64,
-                    "cols": 64,
-                    "chain_length": 2,
-                    "parallel": 2,
-                    "brightness": 40,
-                    "gpio_mapping": "regular",
-                    "gpio_slowdown": 4,
-                    "hardware_mapping": "regular",
-                    "pixel_mapper_config": "U-mapper",
-                },
+                "rows": 64,
+                "cols": 64,
+                "chain_length": 5,  # Length of the longest chain (Chain 1)
+                "parallel": 2,  # Number of parallel chains (Chain 1 + Chain 2)
+                "brightness": 40,
+                "gpio_mapping": "regular",
+                "gpio_slowdown": 4,
+                "hardware_mapping": "regular",
+                "pixel_mapper_config": "U-mapper;Rotate:180",  # For Chain 2's 2x2 layout
             },
             "display_settings": {
                 "text_color": [255, 255, 255],
@@ -691,17 +678,20 @@ class TextDisplay:
 class AnalogClock:
     """Handles analog clock display on its own dedicated matrix instance."""
 
-    def __init__(self, matrix: RGBMatrix, config: Config):
+    def __init__(self, matrix: RGBMatrix, config: Config, row_offset: int = 0):
         self.matrix = matrix
         self.config = config
         self.canvas = None  # Will be set by main loop
+        self.row_offset = row_offset
 
         # Clock configuration - 2x2 panels = 128x128 total area
         # U-mapper handles the coordinate transformation automatically
         self.clock_width = 128
         self.clock_height = 128
         self.center_x = self.clock_width // 2  # 64 (center of 128px width)
-        self.center_y = self.clock_height // 2  # 64 (center of 128px height)
+        self.center_y = (
+            self.clock_height // 2 + row_offset
+        )  # 64 (center of 128px height) + offset
 
         # Clock face parameters
         self.face_radius = min(self.center_x, self.center_y) - 5
@@ -884,11 +874,15 @@ class AnalogClock:
                 error += dx
 
     def _set_pixel(self, x: int, y: int, color: graphics.Color) -> None:
-        """Set a pixel directly on the dedicated clock matrix."""
-        # Direct pixel setting - no offsets needed since this is a dedicated matrix
-        # U-mapper handles the 2x2 panel layout automatically
-        if 0 <= x < self.clock_width and 0 <= y < self.clock_height and self.canvas:
-            self.canvas.SetPixel(x, y, color.red, color.green, color.blue)
+        """Set a pixel on the shared matrix with row offset for chain positioning."""
+        # Apply row offset to position clock on Chain 2 (rows 64-127)
+        y_offset = y + self.row_offset
+        if (
+            0 <= x < self.clock_width
+            and 0 <= y_offset < (self.clock_height + self.row_offset)
+            and self.canvas
+        ):
+            self.canvas.SetPixel(x, y_offset, color.red, color.green, color.blue)
 
 
 class UserManager:
@@ -1069,18 +1063,17 @@ class BecaTicker:
         self.user_manager = UserManager()
         self.calendar_manager = CalendarManager(self.config)
 
-        # Initialize separate matrix instances for each chain
-        self.text_matrix = self._create_matrix("chain1")
-        self.clock_matrix = self._create_matrix("chain2")
+        # Initialize single matrix instance with parallel chains
+        self.matrix = self._create_matrix()
 
-        # Initialize displays with their dedicated matrices
-        # Chain 1: Text display (1x5 panels, 320x64)
+        # Initialize displays with proper row offsets for parallel chains
+        # Chain 1: Text display (1x5 panels, 320x64) - rows 0-63
         self.text_display = TextDisplay(
-            self.text_matrix, self.config, self.calendar_manager, row_offset=0
+            self.matrix, self.config, self.calendar_manager, row_offset=0
         )
 
-        # Chain 2: Analog clock display (2x2 panels, 128x128 with U-mapper)
-        self.analog_clock = AnalogClock(self.clock_matrix, self.config)
+        # Chain 2: Analog clock display (2x2 panels, 128x128) - rows 64-127
+        self.analog_clock = AnalogClock(self.matrix, self.config, row_offset=64)
 
         # Threading
         self.running = False
@@ -1091,23 +1084,22 @@ class BecaTicker:
         self.app.secret_key = self.config.get("flask_secret_key", secrets.token_hex(32))
         self._setup_web_routes()
 
-    def _create_matrix(self, chain_name: str) -> RGBMatrix:
-        """Create and configure a matrix instance for the specified chain."""
+    def _create_matrix(self) -> RGBMatrix:
+        """Create and configure a single matrix instance with parallel chains."""
         options = RGBMatrixOptions()
 
         matrix_config = self.config.get("matrix_options", {})
-        chain_config = matrix_config.get(chain_name, {})
 
-        options.rows = chain_config.get("rows", 64)
-        options.cols = chain_config.get("cols", 64)
-        options.chain_length = chain_config.get("chain_length", 1)
-        options.parallel = chain_config.get("parallel", 1)
-        options.brightness = chain_config.get("brightness", 40)
-        options.hardware_mapping = chain_config.get("hardware_mapping", "regular")
-        options.gpio_slowdown = chain_config.get("gpio_slowdown", 2)
+        options.rows = matrix_config.get("rows", 64)
+        options.cols = matrix_config.get("cols", 64)
+        options.chain_length = matrix_config.get("chain_length", 5)
+        options.parallel = matrix_config.get("parallel", 2)
+        options.brightness = matrix_config.get("brightness", 40)
+        options.hardware_mapping = matrix_config.get("hardware_mapping", "regular")
+        options.gpio_slowdown = matrix_config.get("gpio_slowdown", 2)
 
         # Set pixel mapper if specified
-        pixel_mapper = chain_config.get("pixel_mapper_config", "")
+        pixel_mapper = matrix_config.get("pixel_mapper_config", "")
         if pixel_mapper:
             options.pixel_mapper_config = pixel_mapper
 
@@ -1119,7 +1111,7 @@ class BecaTicker:
         options.show_refresh_rate = False  # Don't show refresh rate counter
 
         logger.info(
-            f"Creating {chain_name} matrix: {options.chain_length}x{options.parallel} "
+            f"Creating matrix: {options.chain_length}x{options.parallel} "
             f"= {options.chain_length * options.cols}x{options.parallel * options.rows} pixels"
         )
 
@@ -1173,15 +1165,10 @@ class BecaTicker:
                 if "matrix_options" in new_config:
                     matrix_options = new_config["matrix_options"]
                     # Update brightness settings
-                    if (
-                        "chain1" in matrix_options
-                        and "brightness" in matrix_options["chain1"]
-                    ):
-                        self.config.set(
-                            "brightness", matrix_options["chain1"]["brightness"]
-                        )
+                    if "brightness" in matrix_options:
+                        self.config.set("brightness", matrix_options["brightness"])
                         logger.info(
-                            f"Updated brightness: {matrix_options['chain1']['brightness']}"
+                            f"Updated brightness: {matrix_options['brightness']}"
                         )
 
                 # Save the configuration to file
@@ -1426,30 +1413,27 @@ class BecaTicker:
             self.display_thread.join(timeout=2)
 
     def _display_loop(self) -> None:
-        """Main display update loop for separate matrix instances."""
-        logger.info("Display update loop started - separate matrix mode")
+        """Main display update loop for single matrix with parallel chains."""
+        logger.info("Display update loop started - single matrix parallel mode")
 
-        # Create separate canvases for each display
-        text_canvas = self.text_matrix.CreateFrameCanvas()
-        clock_canvas = self.clock_matrix.CreateFrameCanvas()
+        # Create single canvas for unified matrix
+        canvas = self.matrix.CreateFrameCanvas()
 
         while self.running:
             try:
-                # Clear both canvases
-                text_canvas.Clear()
-                clock_canvas.Clear()
+                # Clear the canvas
+                canvas.Clear()
 
-                # Set canvases for each display
-                self.text_display.canvas = text_canvas
-                self.analog_clock.canvas = clock_canvas
+                # Set canvas for both displays
+                self.text_display.canvas = canvas
+                self.analog_clock.canvas = canvas
 
-                # Update both displays independently
+                # Update both displays on the same canvas
                 self.text_display.update_display()
                 self.analog_clock.update_display()
 
-                # Swap buffers for both matrices independently
-                text_canvas = self.text_matrix.SwapOnVSync(text_canvas)
-                clock_canvas = self.clock_matrix.SwapOnVSync(clock_canvas)
+                # Swap buffer for the single matrix
+                canvas = self.matrix.SwapOnVSync(canvas)
 
                 # Small delay to prevent excessive CPU usage
                 time.sleep(0.1)
