@@ -54,15 +54,17 @@ class Config:
     """Configuration manager for BecaTicker."""
 
     def __init__(self, config_file: str = "config.json"):
-        self.config_file = config_file
+        # Ensure we have an absolute path to prevent issues with working directory changes
+        self.config_file = os.path.abspath(config_file)
+        logger.info(f"Config file path set to: {self.config_file}")
         self.default_config = {
             "department_name": "SYSTEM ERROR",
             "scrolling_messages": [
                 "Failed to load configuration file",
                 "Try restarting the system",
-                "Or visit http://becaticker.local:5000 to upload your own message",
+                "Or visit http://becaticker.local:5000 to configure",
             ],
-            "calendar_urls": ["https://www.officeholidays.com/ics-all/new-zealand"],
+            "calendar_urls": [],
             "web_port": 5000,
             "matrix_options": {
                 "rows": 64,
@@ -131,11 +133,40 @@ class Config:
         """Save configuration to file."""
         try:
             config_to_save = config or self.config
+            logger.info(f"Attempting to save config to {self.config_file}")
+
+            # Create a backup first
+            backup_file = f"{self.config_file}.backup"
+            if os.path.exists(self.config_file):
+                import shutil
+
+                shutil.copy2(self.config_file, backup_file)
+                logger.info(f"Created backup at {backup_file}")
+
+            # Write the new config
             with open(self.config_file, "w") as f:
                 json.dump(config_to_save, f, indent=2)
-            logger.info("Configuration saved successfully")
+                f.flush()  # Ensure data is written to disk
+                os.fsync(f.fileno())  # Force write to disk
+
+            logger.info(f"Configuration saved successfully to {self.config_file}")
+
+            # Verify the file was written correctly
+            with open(self.config_file, "r") as f:
+                verification = json.load(f)
+                logger.info(
+                    f"Verified config file contains {len(verification)} top-level keys"
+                )
+
         except Exception as e:
-            logger.error(f"Error saving config: {e}")
+            logger.error(f"Error saving config to {self.config_file}: {e}")
+            logger.error(f"Current working directory: {os.getcwd()}")
+            logger.error(f"Config file exists: {os.path.exists(self.config_file)}")
+            if os.path.exists(self.config_file):
+                logger.error(
+                    f"Config file permissions: {oct(os.stat(self.config_file).st_mode)}"
+                )
+            raise e
 
     def get(self, key: str, default=None):
         """Get configuration value."""
@@ -145,16 +176,22 @@ class Config:
             value = value.get(k, {})
         return value if value != {} else default
 
-    def set(self, key: str, value) -> None:
+    def set(self, key: str, value, auto_save: bool = True) -> None:
         """Set configuration value."""
+        logger.debug(
+            f"Setting config key '{key}' to value: {value} (auto_save={auto_save})"
+        )
         keys = key.split(".")
         config = self.config
         for k in keys[:-1]:
             if k not in config:
                 config[k] = {}
             config = config[k]
+        old_value = config.get(keys[-1], "<<NOT_SET>>")
         config[keys[-1]] = value
-        self.save_config()
+        logger.debug(f"Config key '{key}' updated: {old_value} -> {value}")
+        if auto_save:
+            self.save_config()
 
 
 class CalendarManager:
@@ -1417,30 +1454,77 @@ class BecaTicker:
         def update_config():
             try:
                 new_config = request.json
-                logger.info(f"Received config update: {new_config}")
+                logger.info(f"Received config update request from web interface")
+                logger.info(
+                    f"Config keys to update: {list(new_config.keys()) if new_config else 'None'}"
+                )
 
-                # Update specific configuration sections
-                if "department_name" in new_config:
-                    self.config.set("department_name", new_config["department_name"])
-                if "scrolling_messages" in new_config:
-                    self.config.set(
-                        "scrolling_messages", new_config["scrolling_messages"]
+                if not new_config:
+                    return (
+                        jsonify(
+                            {
+                                "status": "error",
+                                "message": "No configuration data received",
+                            }
+                        ),
+                        400,
                     )
+
+                # Log current config state before changes
+                logger.info(
+                    f"Current config has {len(self.config.config)} top-level keys"
+                )
+
+                # Update specific configuration sections (without auto-saving each one)
+                if "department_name" in new_config:
+                    old_value = self.config.get("department_name")
+                    self.config.set(
+                        "department_name",
+                        new_config["department_name"],
+                        auto_save=False,
+                    )
+                    logger.info(
+                        f"Updated department_name: '{old_value}' -> '{new_config['department_name']}'"
+                    )
+
+                if "scrolling_messages" in new_config:
+                    old_count = len(self.config.get("scrolling_messages", []))
+                    self.config.set(
+                        "scrolling_messages",
+                        new_config["scrolling_messages"],
+                        auto_save=False,
+                    )
+                    new_count = len(new_config["scrolling_messages"])
+                    logger.info(
+                        f"Updated scrolling_messages: {old_count} -> {new_count} messages"
+                    )
+
                 if "calendar_urls" in new_config:
-                    self.config.set("calendar_urls", new_config["calendar_urls"])
+                    old_count = len(self.config.get("calendar_urls", []))
+                    self.config.set(
+                        "calendar_urls", new_config["calendar_urls"], auto_save=False
+                    )
+                    new_count = len(new_config["calendar_urls"])
+                    logger.info(
+                        f"Updated calendar_urls: {old_count} -> {new_count} URLs"
+                    )
 
                 # Handle new display settings
                 if "display_settings" in new_config:
                     display_settings = new_config["display_settings"]
                     for key, value in display_settings.items():
-                        self.config.set(f"display_settings.{key}", value)
+                        self.config.set(
+                            f"display_settings.{key}", value, auto_save=False
+                        )
                         logger.info(
                             f"Updated display setting display_settings.{key}: {value}"
                         )
 
                 # Handle display lines configuration
                 if "display_lines" in new_config:
-                    self.config.set("display_lines", new_config["display_lines"])
+                    self.config.set(
+                        "display_lines", new_config["display_lines"], auto_save=False
+                    )
                     logger.info(f"Updated display lines: {new_config['display_lines']}")
 
                 # Handle second display configuration
@@ -1453,21 +1537,26 @@ class BecaTicker:
                                 self.config.set(
                                     f"second_display.settings.{setting_key}",
                                     setting_value,
+                                    auto_save=False,
                                 )
                                 logger.info(
                                     f"Updated second display setting: {setting_key} = {setting_value}"
                                 )
                         else:
-                            self.config.set(f"second_display.{key}", value)
+                            self.config.set(
+                                f"second_display.{key}", value, auto_save=False
+                            )
                             logger.info(f"Updated second display: {key} = {value}")
 
                 # Handle clock settings (for backward compatibility)
                 if "clock_settings" in new_config:
                     clock_settings = new_config["clock_settings"]
                     for key, value in clock_settings.items():
-                        self.config.set(f"clock_settings.{key}", value)
+                        self.config.set(f"clock_settings.{key}", value, auto_save=False)
                         # Also update the second display settings for consistency
-                        self.config.set(f"second_display.settings.{key}", value)
+                        self.config.set(
+                            f"second_display.settings.{key}", value, auto_save=False
+                        )
                         logger.info(f"Updated clock setting: {key} = {value}")
 
                 # Handle matrix options
@@ -1479,18 +1568,24 @@ class BecaTicker:
                         and "brightness" in matrix_options["chain1"]
                     ):
                         self.config.set(
-                            "brightness", matrix_options["chain1"]["brightness"]
+                            "brightness",
+                            matrix_options["chain1"]["brightness"],
+                            auto_save=False,
                         )
                         logger.info(
                             f"Updated brightness: {matrix_options['chain1']['brightness']}"
                         )
 
                 # Save the configuration to file
+                logger.info("About to save configuration to file...")
                 self.config.save_config()
-                logger.info("Configuration saved successfully")
+                logger.info("Configuration save operation completed")
 
                 return jsonify(
-                    {"status": "success", "message": "Configuration updated"}
+                    {
+                        "status": "success",
+                        "message": "Configuration updated successfully",
+                    }
                 )
             except Exception as e:
                 logger.error(f"Error updating config: {e}")
@@ -1527,16 +1622,34 @@ class BecaTicker:
                 new_config = request.json
                 logger.info(f"Received second display config update: {new_config}")
 
+                if not new_config:
+                    return (
+                        jsonify(
+                            {
+                                "status": "error",
+                                "message": "No configuration data received",
+                            }
+                        ),
+                        400,
+                    )
+
                 for key, value in new_config.items():
                     if key == "settings":
                         # Handle nested settings
                         for setting_key, setting_value in value.items():
                             self.config.set(
-                                f"second_display.settings.{setting_key}", setting_value
+                                f"second_display.settings.{setting_key}",
+                                setting_value,
+                                auto_save=False,
+                            )
+                            logger.info(
+                                f"Updated second display setting: {setting_key} = {setting_value}"
                             )
                     else:
-                        self.config.set(f"second_display.{key}", value)
+                        self.config.set(f"second_display.{key}", value, auto_save=False)
+                        logger.info(f"Updated second display: {key} = {value}")
 
+                logger.info("About to save second display configuration...")
                 self.config.save_config()
                 logger.info("Second display configuration saved successfully")
 
@@ -1557,7 +1670,10 @@ class BecaTicker:
             try:
                 current_enabled = self.config.get("second_display.enabled", False)
                 new_enabled = not current_enabled
-                self.config.set("second_display.enabled", new_enabled)
+                self.config.set("second_display.enabled", new_enabled, auto_save=False)
+                logger.info(
+                    f"Toggling second display: {current_enabled} -> {new_enabled}"
+                )
                 self.config.save_config()
 
                 status = "enabled" if new_enabled else "disabled"
