@@ -746,19 +746,28 @@ class ClockDisplay:
         local_x = logical_x % 64
         local_y = logical_y % 64
 
-        # Map to linear chain with offset adjustment
-        # It appears the first panel (offset 0) isn't working, so shift everything
-        # Physical chain appears to be: [unused/broken] [TL] [TR] [BL] [BR]
+        # Clean snake pattern mapping for rewired panels
+        # Chain: Panel1(BL) -> Panel2(BR) -> Panel3(TR) -> Panel4(TL)
+        # Physical layout:
+        # [Panel4: TL] [Panel3: TR]
+        # [Panel1: BL] [Panel2: BR]
+        # Corrected mapping based on observations:
+        # Top-right (offset 128) is correct
+        # Bottom-left (offset 0) is missing -> try different offset
+        # Bottom-right shows top-left -> wrong mapping
+        # Top-left shows bottom-right -> wrong mapping
         if panel_y == 0:  # Top row
-            if panel_x == 0:  # Top-left -> use second panel position
-                panel_offset = 64
-            else:  # Top-right -> use third panel position
-                panel_offset = 128
+            if (
+                panel_x == 0
+            ):  # Top-left -> currently shows bottom-right, try bottom-left panel
+                panel_offset = 0  # Try Panel 1 (was missing from bottom-left)
+            else:  # Top-right -> this is correct
+                panel_offset = 128  # Panel 3: keep this
         else:  # Bottom row
-            if panel_x == 0:  # Bottom-left -> use fourth panel position
-                panel_offset = 192
-            else:  # Bottom-right -> use fifth panel position (if it exists)
-                panel_offset = 256
+            if panel_x == 0:  # Bottom-left -> currently missing, try top-left panel
+                panel_offset = 192  # Try Panel 4 (was showing at top-left)
+            else:  # Bottom-right -> currently shows top-left, try remaining panel
+                panel_offset = 64  # Try Panel 2
 
         physical_x = local_x + panel_offset
         physical_y = local_y + self.row_offset
