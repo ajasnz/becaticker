@@ -746,19 +746,19 @@ class ClockDisplay:
         local_x = logical_x % 64
         local_y = logical_y % 64
 
-        # Map to linear chain with offset adjustment
-        # It appears the first panel (offset 0) isn't working, so shift everything
-        # Physical chain appears to be: [unused/broken] [TL] [TR] [BL] [BR]
-        if panel_y == 0:  # Top row
-            if panel_x == 0:  # Top-left -> use second panel position
-                panel_offset = 64
-            else:  # Top-right -> use third panel position
-                panel_offset = 128
-        else:  # Bottom row
-            if panel_x == 0:  # Bottom-left -> use fourth panel position
-                panel_offset = 192
-            else:  # Bottom-right -> use fifth panel position (if it exists)
-                panel_offset = 256
+        # Map to linear chain with corrected panel positions
+        # Based on observation: logical coordinates are flipped
+        # Logical -> Physical panel mapping needs adjustment
+        if panel_y == 0:  # Logical top row
+            if panel_x == 0:  # Logical top-left -> actually goes to physical bottom-right
+                panel_offset = 256  # Bottom-right physical panel
+            else:  # Logical top-right -> actually goes to physical bottom-left  
+                panel_offset = 192  # Bottom-left physical panel
+        else:  # Logical bottom row
+            if panel_x == 0:  # Logical bottom-left -> actually goes to physical top-right
+                panel_offset = 128  # Top-right physical panel
+            else:  # Logical bottom-right -> actually goes to physical top-left
+                panel_offset = 64   # Top-left physical panel
 
         physical_x = local_x + panel_offset
         physical_y = local_y + self.row_offset
