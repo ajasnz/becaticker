@@ -756,18 +756,21 @@ class ClockDisplay:
         # Bottom-left (offset 0) is missing -> try different offset
         # Bottom-right shows top-left -> wrong mapping
         # Top-left shows bottom-right -> wrong mapping
-        if panel_y == 0:  # Top row
-            if (
-                panel_x == 0
-            ):  # Top-left -> currently shows bottom-right, try bottom-left panel
-                panel_offset = 0  # Try Panel 1 (was missing from bottom-left)
-            else:  # Top-right -> this is correct
-                panel_offset = 128  # Panel 3: keep this
-        else:  # Bottom row
-            if panel_x == 0:  # Bottom-left -> currently missing, try top-left panel
-                panel_offset = 192  # Try Panel 4 (was showing at top-left)
-            else:  # Bottom-right -> currently shows top-left, try remaining panel
-                panel_offset = 64  # Try Panel 2
+        # Correct mapping based on colored bar test results:
+        # Logical top-left (bars 1-8) -> Physical top-right panel (offset 128)
+        # Logical top-right (bars 9-16) -> Physical top-left panel (offset 0) 
+        # Logical bottom-left -> Physical bottom-left panel (try offset we haven't used)
+        # Logical bottom-right (bars 8-1 reversed) -> Physical bottom-right panel (offset 64)
+        if panel_y == 0:  # Logical top row
+            if panel_x == 0:  # Logical top-left -> Physical top-right
+                panel_offset = 128
+            else:  # Logical top-right -> Physical top-left  
+                panel_offset = 0
+        else:  # Logical bottom row
+            if panel_x == 0:  # Logical bottom-left -> Physical bottom-left (missing, try 192 or different approach)
+                panel_offset = 192  # If this doesn't work, the panel chain might only have 3 panels
+            else:  # Logical bottom-right -> Physical bottom-right
+                panel_offset = 64
 
         physical_x = local_x + panel_offset
         physical_y = local_y + self.row_offset
