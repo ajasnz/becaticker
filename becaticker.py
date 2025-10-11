@@ -701,62 +701,64 @@ class ClockDisplay:
 
     def _map_2x2_coordinates(self, x: int, y: int) -> tuple:
         """
-        Map coordinates for 2x2 U-mapped panel layout using first 4 panels of chain 2.
-
-        Based on observed behavior:
-        - Top Left panel shows top right of clock
-        - Top Right panel shows bottom right of clock
-        - Bottom Right panel shows bottom left of clock (upside down)
-
-        This suggests the actual U-mapping is:
-        Panel 0 -> receives logical Top-Right quadrant
-        Panel 1 -> receives logical Bottom-Right quadrant
-        Panel 2 -> receives logical Bottom-Left quadrant (with rotation)
-        Panel 3 -> receives logical Top-Left quadrant
-
-        Corrected mapping:
+        Map coordinates for 2x2 U-mapped panel layout - REBUILT FROM SCRATCH.
+        
+        Physical Setup:
+        - 5x1 text panels: [P0][P1][P2][P3][P4] (Chain 1, rows 0-63)
+        - 2x2 clock panels: [P0][P1][P2][P3] (Chain 2, first 4 panels)
+        
+        2x2 Physical Layout (on right side of 5x1, bottom aligned):
+        +-------+-------+  ← Top row (above 5x1 level)
+        | P3    | P2    |  ← P3(Top-Left) | P2(Top-Right) - NORMAL orientation
+        +-------+-------+  
+        | P0    | P1    |  ← P0(Bottom-Left, input) | P1(Bottom-Right) - UPSIDE DOWN
+        +-------+-------+  ← Bottom row (aligned with 5x1)
+        
+        Chain Flow: P0(BL,input) → P1(BR) → P2(TR) → P3(TL)
+        Bottom panels (P0, P1) are upside down as per hzeller standard
+        
+        Logical 128x128 Clock Coordinates:
+        +-------+-------+
+        | TL    | TR    |  Y: 0-63
+        | 0-63x | 64-127|  
+        +-------+-------+
+        | BL    | BR    |  Y: 64-127
+        | 0-63x | 64-127|
+        +-------+-------+
         """
         # Clamp coordinates to logical 128x128 space
         x = max(0, min(127, x))
         y = max(0, min(127, y))
-
-        # Determine which quadrant we're in
+        
+        # Determine which logical quadrant we're in
         quad_x = x // 64  # 0=left, 1=right
         quad_y = y // 64  # 0=top, 1=bottom
-
-        panel_x = x % 64  # X within the 64x64 panel
-        panel_y = y % 64  # Y within the 64x64 panel
-
-        # Correct mapping for 2x2 U-mapped layout with chain input at bottom-left:
-        # Physical layout: [P0][P1][P2][P3][P4][P5][P6] (Chain 2)
-        # Chain input starts at bottom-left panel, U-mapping flows:
-        # P0(BL-input) → P1(BR) → P2(TR) → P3(TL)
-        #
-        # Physical arrangement:
-        # +-------+-------+
-        # | P3    | P2    | ← Panels 3(TL) and 2(TR)
-        # +-------+-------+
-        # | P0    | P1    | ← Panels 0(BL-input) and 1(BR)
-        # +-------+-------+
-
-        if (
-            quad_x == 0 and quad_y == 0
-        ):  # Top-Left logical → Physical Panel P1 (switched)
-            matrix_x = 64 + panel_x
-            matrix_y = self.row_offset + panel_y
-        elif quad_x == 1 and quad_y == 0:  # Top-Right logical → Physical Panel P2
-            matrix_x = 128 + panel_x
-            matrix_y = self.row_offset + panel_y
-        elif (
-            quad_x == 1 and quad_y == 1
-        ):  # Bottom-Right logical → Physical Panel P3 (switched)
+        
+        panel_x = x % 64  # X coordinate within the 64x64 panel
+        panel_y = y % 64  # Y coordinate within the 64x64 panel
+        
+        # Map logical quadrants to physical panels with proper orientations
+        if quad_x == 0 and quad_y == 0:  # Logical Top-Left → Physical Panel P3 (normal)
             matrix_x = 192 + panel_x
             matrix_y = self.row_offset + panel_y
-        elif quad_x == 0 and quad_y == 1:  # Bottom-Left logical → Physical Panel P0
-            matrix_x = panel_x
+            
+        elif quad_x == 1 and quad_y == 0:  # Logical Top-Right → Physical Panel P2 (normal)
+            matrix_x = 128 + panel_x
             matrix_y = self.row_offset + panel_y
+            
+        elif quad_x == 0 and quad_y == 1:  # Logical Bottom-Left → Physical Panel P0 (upside down)
+            # P0 is upside down: flip both X and Y coordinates
+            matrix_x = (63 - panel_x)  # Flip X within panel
+            matrix_y = self.row_offset + (63 - panel_y)  # Flip Y within panel
+            
+        elif quad_x == 1 and quad_y == 1:  # Logical Bottom-Right → Physical Panel P1 (upside down)
+            # P1 is upside down: flip both X and Y coordinates
+            matrix_x = 64 + (63 - panel_x)  # Flip X within panel, offset to P1 position
+            matrix_y = self.row_offset + (63 - panel_y)  # Flip Y within panel
+            
         else:
-            matrix_x = x  # Fallback
+            # Fallback for edge cases
+            matrix_x = x
             matrix_y = self.row_offset + y
 
         return matrix_x, matrix_y
