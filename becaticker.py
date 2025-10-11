@@ -684,15 +684,15 @@ class AnalogClock:
         self.canvas = None  # Will be set by main loop
         self.row_offset = row_offset
 
-        # Clock configuration - 2x2 panels = 128x128 total area
-        # U-mapper handles the coordinate transformation for 2x2 layout
-        self.clock_width = 128
-        self.clock_height = 128
-        self.center_x = self.clock_width // 2  # 64 (center of 128px width)
-        self.center_y = self.clock_height // 2  # 64 (center of 128px height)
+        # Clock configuration - base 64x64 coordinate system, scaled to 128x128
+        # Drawing in 64x64 space, then scaling to fill 2x2 panel area
+        self.clock_width = 64   # Base coordinate system
+        self.clock_height = 64  # Base coordinate system
+        self.center_x = 32      # Center of 64x64 area
+        self.center_y = 32      # Center of 64x64 area
 
-        # Clock face parameters
-        self.face_radius = min(self.center_x, self.center_y) - 5
+        # Clock face parameters - sized for 64x64 base, will be scaled up
+        self.face_radius = 28   # Fit within 64x64 with margin
         self.hour_hand_length = self.face_radius * 0.5
         self.minute_hand_length = self.face_radius * 0.7
         self.second_hand_length = self.face_radius * 0.9
@@ -738,18 +738,18 @@ class AnalogClock:
         test_color = graphics.Color(255, 0, 255)  # Bright magenta for visibility
         corners = [
             (0, 0),
-            (0, 127),
-            (127, 0),
-            (127, 127),
-        ]  # Four corners of 128x128 area
+            (0, 63),
+            (63, 0),
+            (63, 63),
+        ]  # Four corners of 64x64 base area (will be scaled to 128x128)
         for corner_x, corner_y in corners:
-            for dx in range(8):
-                for dy in range(8):
+            for dx in range(4):
+                for dy in range(4):
                     self._set_pixel(corner_x + dx, corner_y + dy, test_color)
 
         # Center square
-        for test_x in range(60, 68):  # 8x8 square near center
-            for test_y in range(60, 68):
+        for test_x in range(30, 34):  # 4x4 square near center
+            for test_y in range(30, 34):
                 self._set_pixel(test_x, test_y, test_color)
 
         # Calculate angles (0 degrees = 12 o'clock, clockwise)
@@ -895,19 +895,27 @@ class AnalogClock:
                 error += dx
 
     def _set_pixel(self, x: int, y: int, color: graphics.Color) -> None:
-        """Set a pixel on the shared matrix with row offset for chain positioning."""
-        # Apply row offset to position clock (can be negative to shift up)
-        y_offset = y + self.row_offset
+        """Set a pixel on the shared matrix with 2x2 panel mapping for clock."""
+        # Manual 2x2 panel mapping to span the full clock across all 4 panels
+        # Each panel is 64x64, arranged in 2x2 formation
+        
+        # Scale coordinates to span the full 2x2 area (128x128)
+        scaled_x = int((x / 64.0) * 128)  # Scale from 64 to 128
+        scaled_y = int((y / 64.0) * 128)  # Scale from 64 to 128
+        
+        # Apply row offset for chain positioning
+        final_y = scaled_y + self.row_offset
+        
         if (
-            0 <= x < self.clock_width
-            and 0 <= y < self.clock_height
-            and y_offset >= 0
+            0 <= scaled_x < 128
+            and 0 <= scaled_y < 128
+            and final_y >= 0
             and self.canvas
         ):
-            self.canvas.SetPixel(x, y_offset, color.red, color.green, color.blue)
-        elif self.canvas and 0 <= y < self.clock_height:
+            self.canvas.SetPixel(scaled_x, final_y, color.red, color.green, color.blue)
+        elif self.canvas and 0 <= y < 64:
             logger.debug(
-                f"AnalogClock: Pixel out of bounds: ({x},{y}) -> ({x},{y_offset}), bounds: {self.clock_width}x{self.clock_height}"
+                f"AnalogClock: Pixel out of bounds: ({x},{y}) -> ({scaled_x},{final_y})"
             )
 
 
