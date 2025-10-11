@@ -739,14 +739,18 @@ class ClockDisplay:
         # | P0    | P1    | ← Panels 0(BL-input) and 1(BR)
         # +-------+-------+
 
-        if quad_x == 0 and quad_y == 0:  # Top-Left logical → Physical Panel P3
-            matrix_x = 192 + panel_x
+        if (
+            quad_x == 0 and quad_y == 0
+        ):  # Top-Left logical → Physical Panel P1 (switched)
+            matrix_x = 64 + panel_x
             matrix_y = self.row_offset + panel_y
         elif quad_x == 1 and quad_y == 0:  # Top-Right logical → Physical Panel P2
             matrix_x = 128 + panel_x
             matrix_y = self.row_offset + panel_y
-        elif quad_x == 1 and quad_y == 1:  # Bottom-Right logical → Physical Panel P1
-            matrix_x = 64 + panel_x
+        elif (
+            quad_x == 1 and quad_y == 1
+        ):  # Bottom-Right logical → Physical Panel P3 (switched)
+            matrix_x = 192 + panel_x
             matrix_y = self.row_offset + panel_y
         elif quad_x == 0 and quad_y == 1:  # Bottom-Left logical → Physical Panel P0
             matrix_x = panel_x
