@@ -769,10 +769,10 @@ class ClockDisplay:
         else:  # Logical bottom row
             if (
                 panel_x == 0
-            ):  # Logical bottom-left -> Try higher offsets to find the 4th panel
-                panel_offset = 256  # Try next possible panel position
-            else:  # Logical bottom-right -> Physical bottom-right
-                panel_offset = 64
+            ):  # Logical bottom-left -> Found at offset 256
+                panel_offset = 256  # This works!
+            else:  # Logical bottom-right -> Try the missing offset 192
+                panel_offset = 192  # Switch from 64 to 192
 
         physical_x = local_x + panel_offset
         physical_y = local_y + self.row_offset
