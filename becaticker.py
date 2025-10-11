@@ -754,18 +754,19 @@ class ClockDisplay:
                 physical_x = local_x + panel_offset
                 physical_y = local_y + self.row_offset
             else:  # Logical top-right -> physical bottom-left
-                panel_offset = 192  # Bottom-left physical panel  
+                panel_offset = 192  # Bottom-left physical panel
                 physical_x = local_x + panel_offset
                 physical_y = local_y + self.row_offset
-        else:  # Logical bottom row - these need Y-flipping
+        else:  # Logical bottom row - these need Y-flipping within their own panel
+            flipped_local_y = 63 - local_y  # Flip Y within the 64-pixel panel
             if panel_x == 0:  # Logical bottom-left -> physical top-right
                 panel_offset = 128  # Top-right physical panel
                 physical_x = local_x + panel_offset
-                physical_y = (63 - local_y) + self.row_offset  # Flip Y coordinate
+                physical_y = flipped_local_y + self.row_offset
             else:  # Logical bottom-right -> physical top-left
-                panel_offset = 64   # Top-left physical panel  
+                panel_offset = 64  # Top-left physical panel
                 physical_x = local_x + panel_offset
-                physical_y = (63 - local_y) + self.row_offset  # Flip Y coordinate
+                physical_y = flipped_local_y + self.row_offset
 
         return physical_x, physical_y
 
