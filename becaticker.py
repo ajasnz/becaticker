@@ -762,14 +762,12 @@ class ClockDisplay:
         # Logical bottom-left -> Physical bottom-left panel (try offset we haven't used)
         # Logical bottom-right (bars 8-1 reversed) -> Physical bottom-right panel (offset 64)
         if panel_y == 0:  # Logical top row
-            if panel_x == 0:  # Logical top-left -> Physical top-right
+            if panel_x == 0:  # Logical top-left -> Try offset 64 (was working before)
+                panel_offset = 64
+            else:  # Logical top-right -> Keep offset 128 (this is working)
                 panel_offset = 128
-            else:  # Logical top-right -> Physical top-left
-                panel_offset = 0
         else:  # Logical bottom row
-            if (
-                panel_x == 0
-            ):  # Logical bottom-left -> Found at offset 256
+            if panel_x == 0:  # Logical bottom-left -> Found at offset 256
                 panel_offset = 256  # This works!
             else:  # Logical bottom-right -> Try the missing offset 192
                 panel_offset = 192  # Switch from 64 to 192
