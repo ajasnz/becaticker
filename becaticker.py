@@ -727,26 +727,30 @@ class ClockDisplay:
         panel_x = x % 64  # X within the 64x64 panel
         panel_y = y % 64  # Y within the 64x64 panel
 
-        # Corrected mapping based on observed behavior:
-        # Physical Panel 0 (top-left) shows logical top-right quadrant
-        # Physical Panel 1 (top-right) shows logical bottom-right quadrant
-        # Physical Panel 2 (bottom-right) shows logical bottom-left quadrant (upside down)
-        # Physical Panel 3 (bottom-left) should show logical top-left quadrant
+        # Correct mapping for 2x2 U-mapped layout with chain input at bottom-left:
+        # Physical layout: [P0][P1][P2][P3][P4][P5][P6] (Chain 2)
+        # Chain input starts at bottom-left panel, U-mapping flows:
+        # P0(BL-input) → P1(BR) → P2(TR) → P3(TL)
+        #
+        # Physical arrangement:
+        # +-------+-------+
+        # | P3    | P2    | ← Panels 3(TL) and 2(TR)
+        # +-------+-------+
+        # | P0    | P1    | ← Panels 0(BL-input) and 1(BR)
+        # +-------+-------+
 
-        if quad_x == 0 and quad_y == 0:  # Top-Left logical -> Physical Panel 3
+        if quad_x == 0 and quad_y == 0:  # Top-Left logical → Physical Panel P3
             matrix_x = 192 + panel_x
             matrix_y = self.row_offset + panel_y
-        elif quad_x == 1 and quad_y == 0:  # Top-Right logical -> Physical Panel 0
-            matrix_x = panel_x
+        elif quad_x == 1 and quad_y == 0:  # Top-Right logical → Physical Panel P2
+            matrix_x = 128 + panel_x
             matrix_y = self.row_offset + panel_y
-        elif quad_x == 1 and quad_y == 1:  # Bottom-Right logical -> Physical Panel 1
+        elif quad_x == 1 and quad_y == 1:  # Bottom-Right logical → Physical Panel P1
             matrix_x = 64 + panel_x
             matrix_y = self.row_offset + panel_y
-        elif (
-            quad_x == 0 and quad_y == 1
-        ):  # Bottom-Left logical -> Physical Panel 2 (rotated 180°)
-            matrix_x = 128 + (63 - panel_x)  # Flip X for 180° rotation
-            matrix_y = self.row_offset + (63 - panel_y)  # Flip Y for 180° rotation
+        elif quad_x == 0 and quad_y == 1:  # Bottom-Left logical → Physical Panel P0
+            matrix_x = panel_x
+            matrix_y = self.row_offset + panel_y
         else:
             matrix_x = x  # Fallback
             matrix_y = self.row_offset + y
