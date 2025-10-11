@@ -756,11 +756,11 @@ class ClockDisplay:
                 panel_offset = 192  # Panel 4: pixels 192-255
             else:  # Top-right -> Panel 3 (3rd in chain)
                 panel_offset = 128  # Panel 3: pixels 128-191
-        else:  # Bottom row (left-to-right in chain)  
+        else:  # Bottom row (left-to-right in chain)
             if panel_x == 0:  # Bottom-left -> Panel 1 (1st in chain)
-                panel_offset = 0    # Panel 1: pixels 0-63
+                panel_offset = 0  # Panel 1: pixels 0-63
             else:  # Bottom-right -> Panel 2 (2nd in chain)
-                panel_offset = 64   # Panel 2: pixels 64-127
+                panel_offset = 64  # Panel 2: pixels 64-127
 
         physical_x = local_x + panel_offset
         physical_y = local_y + self.row_offset
