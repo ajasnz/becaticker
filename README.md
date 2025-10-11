@@ -4,9 +4,17 @@ Simple dual-chain RGB LED matrix display for Raspberry Pi.
 
 ## What it does
 
-- **Chain 1**: 5×1 panels (256×64) - scrolling text and calendar events
-- **Chain 2**: 2×2 panels (128×128) - analog clock
+Uses 64x64 panels
+
+- **Chain 1**: 5×1 panels - scrolling text and calendar events
+- **Chain 2**: 2×2 panels - analog clock and arcade games
+
 - **Web interface**: configure everything via browser
+
+Physical panel layout:
+
+                                   | (2)1 | (2)4 |
+| (1)4 | (1)3 | (1)2 | (1)1 | (1)0 | (2)2 | (2)3 |
 
 ## Quick Setup
 
@@ -40,4 +48,3 @@ sudo systemctl status becaticker   # check status
 sudo journalctl -u becaticker -f   # view logs
 ```
 
-That's it.
