@@ -706,69 +706,34 @@ class ClockDisplay:
         clock_color = self.config.get("display_settings.clock_color", [0, 255, 0])
         self.clock_color = graphics.Color(*clock_color)
 
-        # Clock positioning for 128x128 logical space
+        # Clock positioning for 128x128 logical space (2x2 physical arrangement)
         self.center_x = 64  # Center of 128x128 logical area
         self.center_y = 64  # Center of 128x128 logical area
-        self.radius = 45  # Radius to utilize full 2x2 space
-
-        # Arcade mode
+        self.radius = 45  # Radius to utilize full 2x2 space        # Arcade mode
         self.arcade_mode = False
         self.arcade_process = None
 
     def _map_to_physical_panel(self, logical_x: int, logical_y: int) -> tuple:
         """
-        Map logical 128x128 coordinates to physical panel coordinates.
+        Map logical coordinates for V-mapper:Z configuration.
 
-        NO MORE CONFUSION - This is the DEFINITIVE mapping:
+        V-mapper:Z with 2x2 physical arrangement (128x128):
+        - P0: Bottom-Left (normal, chain input)
+        - P1: Bottom-Right (FLIPPED upside down)
+        - P2: Top-Left (normal)
+        - P3: Top-Right (FLIPPED upside down)
 
-        Physical Panel Positions on Chain 2:
-        - P0: columns 0-63   (Bottom-Left, chain input, UPSIDE DOWN)
-        - P1: columns 64-127 (Bottom-Right, UPSIDE DOWN)
-        - P2: columns 128-191 (Top-Right, normal)
-        - P3: columns 192-255 (Top-Left, normal)
-
-        Logical to Physical Mapping:
-        - Logical Bottom-Left (0-63, 64-127) → Physical P0 (upside down)
-        - Logical Bottom-Right (64-127, 64-127) → Physical P1 (upside down)
-        - Logical Top-Right (64-127, 0-63) → Physical P2 (normal)
-        - Logical Top-Left (0-63, 0-63) → Physical P3 (normal)
+        The hzeller library handles the physical mapping automatically.
+        We use the full 128x128 coordinate space.
         """
         # Ensure coordinates are within bounds
         logical_x = max(0, min(127, logical_x))
         logical_y = max(0, min(127, logical_y))
 
-        # Determine quadrant
-        is_left = logical_x < 64
-        is_top = logical_y < 64
-
-        # Get position within 64x64 panel
-        panel_x = logical_x % 64
-        panel_y = logical_y % 64
-
-        if is_left and is_top:
-            # Logical Top-Left → Physical Panel P3 (normal orientation)
-            matrix_x = 192 + panel_x
-            matrix_y = self.row_offset + panel_y
-
-        elif not is_left and is_top:
-            # Logical Top-Right → Physical Panel P2 (normal orientation)
-            matrix_x = 128 + panel_x
-            matrix_y = self.row_offset + panel_y
-
-        elif is_left and not is_top:
-            # Logical Bottom-Left → Physical Panel P0 (UPSIDE DOWN)
-            matrix_x = 0 + (63 - panel_x)  # Flip X
-            matrix_y = self.row_offset + (63 - panel_y)  # Flip Y
-
-        elif not is_left and not is_top:
-            # Logical Bottom-Right → Physical Panel P1 (UPSIDE DOWN)
-            matrix_x = 64 + (63 - panel_x)  # Flip X, offset to P1
-            matrix_y = self.row_offset + (63 - panel_y)  # Flip Y
-
-        else:
-            # Fallback (should never reach here)
-            matrix_x = logical_x
-            matrix_y = self.row_offset + logical_y
+        # For V-mapper:Z, we use the logical coordinates directly
+        # The library handles the panel arrangement and flipping
+        matrix_x = logical_x
+        matrix_y = self.row_offset + logical_y
 
         return matrix_x, matrix_y
 
@@ -1135,7 +1100,8 @@ class BecaTicker:
         options.brightness = chain_config.get("brightness", 40)
         options.hardware_mapping = chain_config.get("hardware_mapping", "regular")
         options.gpio_slowdown = chain_config.get("gpio_slowdown", 2)
-        # Note: pixel_mapper not used as we handle U-mapping manually for chain 2
+        # Use V-mapper:Z for chain 2 (clock display) - vertical arrangement with alternating flip
+        options.pixel_mapper_config = "V-mapper:Z"
         options.drop_privileges = False
         options.disable_hardware_pulsing = True
 
