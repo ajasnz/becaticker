@@ -301,9 +301,9 @@ class CalendarManager:
                             now = now.replace(tzinfo=None)
 
                         try:
-                            # 7 day window
+                            # 21 day window (expanded from 7 days)
                             if start_time > now and start_time < now + timedelta(
-                                days=7
+                                days=21
                             ):
                                 all_events.append(event)
                                 logger.info(f"Added event: {event['summary']}")
@@ -324,7 +324,7 @@ class CalendarManager:
 
         # Sort events by start time
         all_events.sort(key=lambda x: x["start"])
-        self.events = all_events[:30]  # Keep only next 30 events
+        self.events = all_events[:50]  # Keep up to 50 events for 21-day window
         self.last_update = datetime.now()
 
         logger.info(f"Updated calendar with {len(self.events)} events")
@@ -887,6 +887,15 @@ class ClockDisplay:
     def _get_colors(self):
         """Get current colors from configuration."""
         clock_config = self.config.get("second_display.settings", {})
+        
+        # Debug logging to help troubleshoot configuration issues
+        if hasattr(self, '_last_config_debug') and time.time() - self._last_config_debug > 30:
+            logger.info(f"Clock config debug - face_style: {clock_config.get('face_style', 'NOT_SET')}")
+            logger.info(f"Clock config debug - hand_style: {clock_config.get('hand_style', 'NOT_SET')}")
+            logger.info(f"Clock config debug - marker_style: {clock_config.get('marker_style', 'NOT_SET')}")
+            self._last_config_debug = time.time()
+        elif not hasattr(self, '_last_config_debug'):
+            self._last_config_debug = time.time()
 
         return {
             # Face colors
