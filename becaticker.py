@@ -689,9 +689,7 @@ class AnalogClock:
         self.clock_width = 128
         self.clock_height = 128
         self.center_x = self.clock_width // 2  # 64 (center of 128px width)
-        self.center_y = (
-            self.clock_height // 2 + row_offset
-        )  # 64 (center of 128px height) + offset
+        self.center_y = self.clock_height // 2  # 64 (center of 128px height)
 
         # Clock face parameters
         self.face_radius = min(self.center_x, self.center_y) - 5
@@ -723,6 +721,7 @@ class AnalogClock:
     def update_display(self) -> None:
         """Update the analog clock display."""
         if not self.canvas:
+            logger.warning("AnalogClock: No canvas available")
             return
 
         # Get current time
@@ -730,6 +729,10 @@ class AnalogClock:
         hours = now.hour % 12  # Convert to 12-hour format
         minutes = now.minute
         seconds = now.second
+
+        logger.debug(
+            f"AnalogClock: Drawing clock at {hours:02d}:{minutes:02d}:{seconds:02d}, center=({self.center_x},{self.center_y}), offset={self.row_offset}"
+        )
 
         # Calculate angles (0 degrees = 12 o'clock, clockwise)
         # Subtract 90 degrees to start from 12 o'clock instead of 3 o'clock
@@ -877,12 +880,10 @@ class AnalogClock:
         """Set a pixel on the shared matrix with row offset for chain positioning."""
         # Apply row offset to position clock on Chain 2 (rows 64-127)
         y_offset = y + self.row_offset
-        if (
-            0 <= x < self.clock_width
-            and 0 <= y_offset < (self.clock_height + self.row_offset)
-            and self.canvas
-        ):
+        if 0 <= x < self.clock_width and 0 <= y < self.clock_height and self.canvas:
             self.canvas.SetPixel(x, y_offset, color.red, color.green, color.blue)
+        elif self.canvas:
+            logger.debug(f"AnalogClock: Pixel out of bounds: ({x},{y}) -> ({x},{y_offset}), bounds: {self.clock_width}x{self.clock_height}")
 
 
 class UserManager:
