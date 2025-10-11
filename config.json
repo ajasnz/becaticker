@@ -20,7 +20,7 @@
     "gpio_mapping": "regular",
     "gpio_slowdown": 4,
     "hardware_mapping": "regular",
-    "pixel_mapper_config": "U-mapper;Rotate:180"
+    "pixel_mapper_config": "U-mapper"
   },
   "display_settings": {
     "text_color": [

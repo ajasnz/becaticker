@@ -736,7 +736,12 @@ class AnalogClock:
 
         # Simple test: fill corner squares to verify the clock area is working
         test_color = graphics.Color(255, 0, 255)  # Bright magenta for visibility
-        corners = [(0, 0), (0, 127), (127, 0), (127, 127)]  # Four corners of 128x128 area
+        corners = [
+            (0, 0),
+            (0, 127),
+            (127, 0),
+            (127, 127),
+        ]  # Four corners of 128x128 area
         for corner_x, corner_y in corners:
             for dx in range(8):
                 for dy in range(8):
@@ -891,11 +896,14 @@ class AnalogClock:
 
     def _set_pixel(self, x: int, y: int, color: graphics.Color) -> None:
         """Set a pixel on the shared matrix with row offset for chain positioning."""
-        # Apply row offset to position clock on Chain 2 (rows 64-127)
+        # Apply row offset to position clock (can be negative to shift up)
         y_offset = y + self.row_offset
-        if 0 <= x < self.clock_width and 0 <= y < self.clock_height and self.canvas:
+        if (0 <= x < self.clock_width and 
+            0 <= y < self.clock_height and 
+            y_offset >= 0 and 
+            self.canvas):
             self.canvas.SetPixel(x, y_offset, color.red, color.green, color.blue)
-        elif self.canvas:
+        elif self.canvas and 0 <= y < self.clock_height:
             logger.debug(
                 f"AnalogClock: Pixel out of bounds: ({x},{y}) -> ({x},{y_offset}), bounds: {self.clock_width}x{self.clock_height}"
             )
@@ -1088,8 +1096,8 @@ class BecaTicker:
             self.matrix, self.config, self.calendar_manager, row_offset=64
         )
 
-        # Chain 2: Analog clock display (2x2 panels, 128x128) - rows 0-63 (actual wiring)
-        self.analog_clock = AnalogClock(self.matrix, self.config, row_offset=0)
+        # Chain 2: Analog clock display (2x2 panels, 128x128) - shifted up by 64px
+        self.analog_clock = AnalogClock(self.matrix, self.config, row_offset=-64)
 
         # Threading
         self.running = False
