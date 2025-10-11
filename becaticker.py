@@ -898,10 +898,12 @@ class AnalogClock:
         """Set a pixel on the shared matrix with row offset for chain positioning."""
         # Apply row offset to position clock (can be negative to shift up)
         y_offset = y + self.row_offset
-        if (0 <= x < self.clock_width and 
-            0 <= y < self.clock_height and 
-            y_offset >= 0 and 
-            self.canvas):
+        if (
+            0 <= x < self.clock_width
+            and 0 <= y < self.clock_height
+            and y_offset >= 0
+            and self.canvas
+        ):
             self.canvas.SetPixel(x, y_offset, color.red, color.green, color.blue)
         elif self.canvas and 0 <= y < self.clock_height:
             logger.debug(
@@ -1090,14 +1092,14 @@ class BecaTicker:
         # Initialize single matrix instance with parallel chains
         self.matrix = self._create_matrix()
 
-        # Initialize displays with swapped row offsets based on actual wiring
-        # Chain 1: Text display (1x5 panels, 320x64) - rows 64-127 (actual wiring)
+        # Initialize displays with correct chain assignments
+        # Chain 1: Text display (1x5 panels, 320x64) - rows 0-63 (5x1 chain)
         self.text_display = TextDisplay(
-            self.matrix, self.config, self.calendar_manager, row_offset=64
+            self.matrix, self.config, self.calendar_manager, row_offset=0
         )
 
-        # Chain 2: Analog clock display (2x2 panels, 128x128) - shifted up by 64px
-        self.analog_clock = AnalogClock(self.matrix, self.config, row_offset=-64)
+        # Chain 2: Analog clock display (2x2 panels, 128x128) - rows 64-127 (2x2 chain)
+        self.analog_clock = AnalogClock(self.matrix, self.config, row_offset=64)
 
         # Threading
         self.running = False
