@@ -835,22 +835,22 @@ class ClockDisplay:
         """Draw a test pattern to find the correct mapping for bottom-left panel."""
         # Instead of using _set_pixel, let's directly test physical positions
         # to find where the bottom-left logical panel actually maps to
-        
+
         # Test different physical offsets for the bottom-left logical panel (0,64 to 63,127)
         # by drawing small colored squares at different physical positions
-        
+
         # Try physical positions: 0, 64, 128, 192, 256, 320 for bottom-left content
         test_colors = [
-            graphics.Color(255, 0, 0),    # Red - offset 0
-            graphics.Color(0, 255, 0),    # Green - offset 64  
-            graphics.Color(0, 0, 255),    # Blue - offset 128
+            graphics.Color(255, 0, 0),  # Red - offset 0
+            graphics.Color(0, 255, 0),  # Green - offset 64
+            graphics.Color(0, 0, 255),  # Blue - offset 128
             graphics.Color(255, 255, 0),  # Yellow - offset 192
             graphics.Color(255, 0, 255),  # Magenta - offset 256
             graphics.Color(0, 255, 255),  # Cyan - offset 320
         ]
-        
+
         offsets = [0, 64, 128, 192, 256, 320]
-        
+
         # For each offset, draw a small square that should appear in bottom-left logical position
         for i, (offset, color) in enumerate(zip(offsets, test_colors)):
             # Draw a small square at position that should be bottom-left (logical 10,74 to 20,84)
@@ -858,28 +858,37 @@ class ClockDisplay:
                 for y in range(74, 85):
                     physical_x = x + offset  # Try different physical X offsets
                     physical_y = y + self.row_offset  # Y position in chain 2
-                    
-                    if physical_x < self.canvas.width and physical_y < self.canvas.height:
-                        self.canvas.SetPixel(physical_x, physical_y, color.red, color.green, color.blue)
-        
+
+                    if (
+                        physical_x < self.canvas.width
+                        and physical_y < self.canvas.height
+                    ):
+                        self.canvas.SetPixel(
+                            physical_x, physical_y, color.red, color.green, color.blue
+                        )
+
         # Also draw reference squares in the known working panels for comparison
         white = graphics.Color(255, 255, 255)
-        
+
         # Top-left reference (should appear at physical offset 0)
         for x in range(10, 21):
             for y in range(10, 21):
                 physical_x = x + 0
                 physical_y = y + self.row_offset
                 if physical_x < self.canvas.width and physical_y < self.canvas.height:
-                    self.canvas.SetPixel(physical_x, physical_y, white.red, white.green, white.blue)
-        
-        # Top-right reference (should appear at physical offset 64)  
+                    self.canvas.SetPixel(
+                        physical_x, physical_y, white.red, white.green, white.blue
+                    )
+
+        # Top-right reference (should appear at physical offset 64)
         for x in range(10, 21):
             for y in range(10, 21):
                 physical_x = x + 64
                 physical_y = y + self.row_offset
                 if physical_x < self.canvas.width and physical_y < self.canvas.height:
-                    self.canvas.SetPixel(physical_x, physical_y, white.red, white.green, white.blue)
+                    self.canvas.SetPixel(
+                        physical_x, physical_y, white.red, white.green, white.blue
+                    )
 
     def _draw_analog_clock(self, now: datetime, colors: dict) -> None:
         """Draw analog clock face with hands."""
