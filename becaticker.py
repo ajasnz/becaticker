@@ -830,63 +830,60 @@ class ClockDisplay:
             self._draw_test_pattern(colors)
 
     def _draw_test_pattern(self, colors: dict) -> None:
-        """Draw a test pattern to find the correct mapping for bottom-left panel."""
-        # Instead of using _set_pixel, let's directly test physical positions
-        # to find where the bottom-left logical panel actually maps to
-
-        # Test different physical offsets for the bottom-left logical panel (0,64 to 63,127)
-        # by drawing small colored squares at different physical positions
-
-        # Try physical positions: 0, 64, 128, 192, 256, 320 for bottom-left content
+        """Draw colored bars spanning full width to test coordinate mapping."""
+        # Draw horizontal colored bars across the full 128-pixel width
+        # This will help us see which physical panels are being addressed
+        
+        # Bar colors for different Y positions
         test_colors = [
-            graphics.Color(255, 0, 0),  # Red - offset 0
-            graphics.Color(0, 255, 0),  # Green - offset 64
-            graphics.Color(0, 0, 255),  # Blue - offset 128
-            graphics.Color(255, 255, 0),  # Yellow - offset 192
-            graphics.Color(255, 0, 255),  # Magenta - offset 256
-            graphics.Color(0, 255, 255),  # Cyan - offset 320
+            graphics.Color(255, 0, 0),    # Red - Y=0-7
+            graphics.Color(0, 255, 0),    # Green - Y=8-15
+            graphics.Color(0, 0, 255),    # Blue - Y=16-23
+            graphics.Color(255, 255, 0),  # Yellow - Y=24-31
+            graphics.Color(255, 0, 255),  # Magenta - Y=32-39
+            graphics.Color(0, 255, 255),  # Cyan - Y=40-47
+            graphics.Color(255, 255, 255), # White - Y=48-55
+            graphics.Color(128, 128, 128), # Gray - Y=56-63
+            graphics.Color(255, 128, 0),   # Orange - Y=64-71
+            graphics.Color(128, 255, 0),   # Lime - Y=72-79
+            graphics.Color(128, 0, 255),   # Purple - Y=80-87
+            graphics.Color(255, 128, 128), # Pink - Y=88-95
+            graphics.Color(128, 255, 255), # Light cyan - Y=96-103
+            graphics.Color(255, 255, 128), # Light yellow - Y=104-111
+            graphics.Color(64, 64, 64),    # Dark gray - Y=112-119
+            graphics.Color(192, 192, 192), # Light gray - Y=120-127
         ]
-
-        offsets = [0, 64, 128, 192, 256, 320]
-
-        # For each offset, draw a small square that should appear in bottom-left logical position
-        for i, (offset, color) in enumerate(zip(offsets, test_colors)):
-            # Draw a small square at position that should be bottom-left (logical 10,74 to 20,84)
-            for x in range(10, 21):
-                for y in range(74, 85):
-                    physical_x = x + offset  # Try different physical X offsets
-                    physical_y = y + self.row_offset  # Y position in chain 2
-
-                    if (
-                        physical_x < self.canvas.width
-                        and physical_y < self.canvas.height
-                    ):
-                        self.canvas.SetPixel(
-                            physical_x, physical_y, color.red, color.green, color.blue
-                        )
-
-        # Also draw reference squares in the known working panels for comparison
-        white = graphics.Color(255, 255, 255)
-
-        # Top-left reference (should appear at physical offset 0)
-        for x in range(10, 21):
-            for y in range(10, 21):
-                physical_x = x + 0
-                physical_y = y + self.row_offset
+        
+        # Draw bars using logical coordinates (_set_pixel)
+        for bar_index in range(16):
+            y_start = bar_index * 8
+            color = test_colors[bar_index]
+            
+            # Draw full-width bar (X from 0 to 127)
+            for x in range(128):
+                for y in range(y_start, y_start + 8):  # Each bar is 8 pixels tall
+                    if y < 128:  # Stay within bounds
+                        self._set_pixel(x, y, color)
+        
+        # Also draw direct physical reference bars to see the actual panel order
+        # These bypass _set_pixel and go directly to physical coordinates
+        border_color = graphics.Color(255, 255, 255)  # White borders
+        
+        # Draw white borders around each physical panel (64 pixels wide each)
+        for panel_offset in [0, 64, 128, 192]:
+            # Top border
+            for x in range(64):
+                physical_x = x + panel_offset
+                physical_y = 0 + self.row_offset
                 if physical_x < self.canvas.width and physical_y < self.canvas.height:
-                    self.canvas.SetPixel(
-                        physical_x, physical_y, white.red, white.green, white.blue
-                    )
-
-        # Top-right reference (should appear at physical offset 64)
-        for x in range(10, 21):
-            for y in range(10, 21):
-                physical_x = x + 64
-                physical_y = y + self.row_offset
+                    self.canvas.SetPixel(physical_x, physical_y, border_color.red, border_color.green, border_color.blue)
+            
+            # Bottom border  
+            for x in range(64):
+                physical_x = x + panel_offset
+                physical_y = 63 + self.row_offset
                 if physical_x < self.canvas.width and physical_y < self.canvas.height:
-                    self.canvas.SetPixel(
-                        physical_x, physical_y, white.red, white.green, white.blue
-                    )
+                    self.canvas.SetPixel(physical_x, physical_y, border_color.red, border_color.green, border_color.blue)
 
     def _draw_analog_clock(self, now: datetime, colors: dict) -> None:
         """Draw analog clock face with hands."""
