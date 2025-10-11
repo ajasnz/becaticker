@@ -1116,7 +1116,7 @@ class BecaTicker:
 
         # Additional anti-flickering options
         options.limit_refresh_rate_hz = 120  # Limit refresh rate for stability
-        options.show_refresh_rate = False    # Don't show refresh rate counter
+        options.show_refresh_rate = False  # Don't show refresh rate counter
 
         logger.info(
             f"Creating {chain_name} matrix: {options.chain_length}x{options.parallel} "
