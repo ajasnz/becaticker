@@ -684,12 +684,12 @@ class AnalogClock:
         self.canvas = None  # Will be set by main loop
         self.row_offset = row_offset
 
-        # Clock configuration - adjusted for actual drawable area
-        # With U-mapper, we may only have 64x64 effective area per panel
-        self.clock_width = 64
-        self.clock_height = 64
-        self.center_x = self.clock_width // 2  # 32 (center of 64px width)
-        self.center_y = self.clock_height // 2  # 32 (center of 64px height)
+        # Clock configuration - 2x2 panels = 128x128 total area
+        # U-mapper handles the coordinate transformation for 2x2 layout
+        self.clock_width = 128
+        self.clock_height = 128
+        self.center_x = self.clock_width // 2  # 64 (center of 128px width)
+        self.center_y = self.clock_height // 2  # 64 (center of 128px height)
 
         # Clock face parameters
         self.face_radius = min(self.center_x, self.center_y) - 5
@@ -736,18 +736,18 @@ class AnalogClock:
 
         # Simple test: fill corner squares to verify the clock area is working
         test_color = graphics.Color(255, 0, 255)  # Bright magenta for visibility
-        corners = [(0, 0), (0, 63), (63, 0), (63, 63)]  # Four corners of 64x64 area
+        corners = [(0, 0), (0, 127), (127, 0), (127, 127)]  # Four corners of 128x128 area
         for corner_x, corner_y in corners:
-            for dx in range(4):
-                for dy in range(4):
+            for dx in range(8):
+                for dy in range(8):
                     self._set_pixel(corner_x + dx, corner_y + dy, test_color)
 
         # Center square
-        for test_x in range(30, 34):  # 4x4 square near center
-            for test_y in range(30, 34):
-                self._set_pixel(
-                    test_x, test_y, test_color
-                )  # Calculate angles (0 degrees = 12 o'clock, clockwise)
+        for test_x in range(60, 68):  # 8x8 square near center
+            for test_y in range(60, 68):
+                self._set_pixel(test_x, test_y, test_color)
+
+        # Calculate angles (0 degrees = 12 o'clock, clockwise)
         # Subtract 90 degrees to start from 12 o'clock instead of 3 o'clock
         hour_angle = ((hours * 30) + (minutes * 0.5) - 90) * 3.14159 / 180
         minute_angle = ((minutes * 6) - 90) * 3.14159 / 180
