@@ -746,22 +746,26 @@ class ClockDisplay:
         local_x = logical_x % 64
         local_y = logical_y % 64
 
-        # Map to linear chain with corrected panel positions
-        # Based on observation: logical coordinates are flipped
-        # Logical -> Physical panel mapping needs adjustment
-        if panel_y == 0:  # Logical top row
-            if panel_x == 0:  # Logical top-left -> actually goes to physical bottom-right
+        # Map to linear chain with corrected panel positions and Y-flip for bottom panels
+        # Top panels are correct, bottom panels need Y-coordinate flipping
+        if panel_y == 0:  # Logical top row - these are correct
+            if panel_x == 0:  # Logical top-left -> physical bottom-right
                 panel_offset = 256  # Bottom-right physical panel
-            else:  # Logical top-right -> actually goes to physical bottom-left  
-                panel_offset = 192  # Bottom-left physical panel
-        else:  # Logical bottom row
-            if panel_x == 0:  # Logical bottom-left -> actually goes to physical top-right
+                physical_x = local_x + panel_offset
+                physical_y = local_y + self.row_offset
+            else:  # Logical top-right -> physical bottom-left
+                panel_offset = 192  # Bottom-left physical panel  
+                physical_x = local_x + panel_offset
+                physical_y = local_y + self.row_offset
+        else:  # Logical bottom row - these need Y-flipping
+            if panel_x == 0:  # Logical bottom-left -> physical top-right
                 panel_offset = 128  # Top-right physical panel
-            else:  # Logical bottom-right -> actually goes to physical top-left
-                panel_offset = 64   # Top-left physical panel
-
-        physical_x = local_x + panel_offset
-        physical_y = local_y + self.row_offset
+                physical_x = local_x + panel_offset
+                physical_y = (63 - local_y) + self.row_offset  # Flip Y coordinate
+            else:  # Logical bottom-right -> physical top-left
+                panel_offset = 64   # Top-left physical panel  
+                physical_x = local_x + panel_offset
+                physical_y = (63 - local_y) + self.row_offset  # Flip Y coordinate
 
         return physical_x, physical_y
 
