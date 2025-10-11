@@ -703,18 +703,18 @@ class ClockDisplay:
         """
         Map coordinates for 2x2 U-mapped panel layout using first 4 panels of chain 2.
 
-        Physical layout on chain 2 (5 panels, but we use first 4 for 2x2):
-        Panel 0 -> Panel 1 -> Panel 2 -> Panel 3 -> Panel 4(unused)
+        Based on observed behavior:
+        - Top Left panel shows top right of clock
+        - Top Right panel shows bottom right of clock
+        - Bottom Right panel shows bottom left of clock (upside down)
 
-        Logical 2x2 layout (128x128):
-        +-------+-------+
-        | TL    | TR    |  (64x64 each)
-        | P0    | P1    |  Y: 0-63
-        +-------+-------+
-        | BL    | BR    |
-        | P3    | P2    |  Y: 64-127
-        +-------+-------+
-        U-mapping: P0->P1->P2->P3
+        This suggests the actual U-mapping is:
+        Panel 0 -> receives logical Top-Right quadrant
+        Panel 1 -> receives logical Bottom-Right quadrant
+        Panel 2 -> receives logical Bottom-Left quadrant (with rotation)
+        Panel 3 -> receives logical Top-Left quadrant
+
+        Corrected mapping:
         """
         # Clamp coordinates to logical 128x128 space
         x = max(0, min(127, x))
@@ -727,20 +727,26 @@ class ClockDisplay:
         panel_x = x % 64  # X within the 64x64 panel
         panel_y = y % 64  # Y within the 64x64 panel
 
-        # Map to physical panel positions on chain 2
-        # U-mapping: Top-Left(P0) -> Top-Right(P1) -> Bottom-Right(P2) -> Bottom-Left(P3)
-        if quad_x == 0 and quad_y == 0:  # Top-Left -> Panel 0
-            matrix_x = panel_x
-            matrix_y = self.row_offset + panel_y
-        elif quad_x == 1 and quad_y == 0:  # Top-Right -> Panel 1
-            matrix_x = 64 + panel_x
-            matrix_y = self.row_offset + panel_y
-        elif quad_x == 1 and quad_y == 1:  # Bottom-Right -> Panel 2
-            matrix_x = 128 + panel_x
-            matrix_y = self.row_offset + panel_y
-        elif quad_x == 0 and quad_y == 1:  # Bottom-Left -> Panel 3
+        # Corrected mapping based on observed behavior:
+        # Physical Panel 0 (top-left) shows logical top-right quadrant
+        # Physical Panel 1 (top-right) shows logical bottom-right quadrant
+        # Physical Panel 2 (bottom-right) shows logical bottom-left quadrant (upside down)
+        # Physical Panel 3 (bottom-left) should show logical top-left quadrant
+
+        if quad_x == 0 and quad_y == 0:  # Top-Left logical -> Physical Panel 3
             matrix_x = 192 + panel_x
             matrix_y = self.row_offset + panel_y
+        elif quad_x == 1 and quad_y == 0:  # Top-Right logical -> Physical Panel 0
+            matrix_x = panel_x
+            matrix_y = self.row_offset + panel_y
+        elif quad_x == 1 and quad_y == 1:  # Bottom-Right logical -> Physical Panel 1
+            matrix_x = 64 + panel_x
+            matrix_y = self.row_offset + panel_y
+        elif (
+            quad_x == 0 and quad_y == 1
+        ):  # Bottom-Left logical -> Physical Panel 2 (rotated 180°)
+            matrix_x = 128 + (63 - panel_x)  # Flip X for 180° rotation
+            matrix_y = self.row_offset + (63 - panel_y)  # Flip Y for 180° rotation
         else:
             matrix_x = x  # Fallback
             matrix_y = self.row_offset + y
