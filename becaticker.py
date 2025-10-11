@@ -685,7 +685,7 @@ class AnalogClock:
         self.row_offset = row_offset
 
         # Clock configuration - 2x2 panels = 128x128 total area
-        # U-mapper handles the coordinate transformation for 2x2 layout
+        # U-mapper handles the coordinate transformation automatically
         self.clock_width = 128
         self.clock_height = 128
         self.center_x = self.clock_width // 2  # 64 (center of 128px width)
@@ -733,24 +733,6 @@ class AnalogClock:
         logger.debug(
             f"AnalogClock: Drawing clock at {hours:02d}:{minutes:02d}:{seconds:02d}, center=({self.center_x},{self.center_y}), offset={self.row_offset}"
         )
-
-        # Simple test: fill corner squares to verify the clock area is working
-        test_color = graphics.Color(255, 0, 255)  # Bright magenta for visibility
-        corners = [
-            (0, 0),
-            (0, 127),
-            (127, 0),
-            (127, 127),
-        ]  # Four corners of 128x128 area
-        for corner_x, corner_y in corners:
-            for dx in range(8):
-                for dy in range(8):
-                    self._set_pixel(corner_x + dx, corner_y + dy, test_color)
-
-        # Center square
-        for test_x in range(60, 68):  # 8x8 square near center
-            for test_y in range(60, 68):
-                self._set_pixel(test_x, test_y, test_color)
 
         # Calculate angles (0 degrees = 12 o'clock, clockwise)
         # Subtract 90 degrees to start from 12 o'clock instead of 3 o'clock
@@ -896,16 +878,11 @@ class AnalogClock:
 
     def _set_pixel(self, x: int, y: int, color: graphics.Color) -> None:
         """Set a pixel on the shared matrix with row offset for chain positioning."""
-        # Apply row offset to position clock (can be negative to shift up)
+        # Apply row offset to position clock on Chain 2 (rows 64-127)
         y_offset = y + self.row_offset
-        if (
-            0 <= x < self.clock_width
-            and 0 <= y < self.clock_height
-            and y_offset >= 0
-            and self.canvas
-        ):
+        if 0 <= x < self.clock_width and 0 <= y < self.clock_height and self.canvas:
             self.canvas.SetPixel(x, y_offset, color.red, color.green, color.blue)
-        elif self.canvas and 0 <= y < self.clock_height:
+        elif self.canvas:
             logger.debug(
                 f"AnalogClock: Pixel out of bounds: ({x},{y}) -> ({x},{y_offset}), bounds: {self.clock_width}x{self.clock_height}"
             )
@@ -1092,14 +1069,14 @@ class BecaTicker:
         # Initialize single matrix instance with parallel chains
         self.matrix = self._create_matrix()
 
-        # Initialize displays with swapped row offsets based on actual wiring
-        # Chain 1: Text display (1x5 panels, 320x64) - rows 64-127 (actual wiring)
+        # Initialize displays with proper row offsets for parallel chains
+        # Chain 1: Text display (1x5 panels, 320x64) - rows 0-63
         self.text_display = TextDisplay(
-            self.matrix, self.config, self.calendar_manager, row_offset=64
+            self.matrix, self.config, self.calendar_manager, row_offset=0
         )
 
-        # Chain 2: Analog clock display (2x2 panels, 128x128) - shifted up by 64px
-        self.analog_clock = AnalogClock(self.matrix, self.config, row_offset=-64)
+        # Chain 2: Analog clock display (2x2 panels, 128x128) - rows 64-127
+        self.analog_clock = AnalogClock(self.matrix, self.config, row_offset=64)
 
         # Threading
         self.running = False
