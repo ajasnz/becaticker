@@ -758,17 +758,19 @@ class ClockDisplay:
         # Top-left shows bottom-right -> wrong mapping
         # Correct mapping based on colored bar test results:
         # Logical top-left (bars 1-8) -> Physical top-right panel (offset 128)
-        # Logical top-right (bars 9-16) -> Physical top-left panel (offset 0) 
+        # Logical top-right (bars 9-16) -> Physical top-left panel (offset 0)
         # Logical bottom-left -> Physical bottom-left panel (try offset we haven't used)
         # Logical bottom-right (bars 8-1 reversed) -> Physical bottom-right panel (offset 64)
         if panel_y == 0:  # Logical top row
             if panel_x == 0:  # Logical top-left -> Physical top-right
                 panel_offset = 128
-            else:  # Logical top-right -> Physical top-left  
+            else:  # Logical top-right -> Physical top-left
                 panel_offset = 0
         else:  # Logical bottom row
-            if panel_x == 0:  # Logical bottom-left -> Physical bottom-left (missing, try 192 or different approach)
-                panel_offset = 192  # If this doesn't work, the panel chain might only have 3 panels
+            if (
+                panel_x == 0
+            ):  # Logical bottom-left -> Try higher offsets to find the 4th panel
+                panel_offset = 256  # Try next possible panel position
             else:  # Logical bottom-right -> Physical bottom-right
                 panel_offset = 64
 
