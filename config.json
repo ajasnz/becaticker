@@ -20,8 +20,10 @@
     "gpio_mapping": "regular",
     "gpio_slowdown": 4,
     "hardware_mapping": "regular",
-    "pixel_mapper_config": "U-mapper",
-    "chain2_length": 4
+    "pixel_mapper_config": "U-mapper;Rotate:180",
+    "chain2_length": 4,
+    "chain2_cols": 128,
+    "chain2_pixel_mapper": "Rotate:90"
   },
   "display_settings": {
     "text_color": [
@@ -76,7 +78,7 @@
   },
   "second_display": {
     "enabled": true,
-    "type": "clock",
+    "type": "test",
     "layout": "2x2",
     "chain": 2,
     "settings": {
