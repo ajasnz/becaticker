@@ -15,7 +15,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 echo "Setting up BecaTicker..."
 
-# Install system packages including cython3
+# Install system packages
 apt update  
 apt install -y python3 python3-pip python3-venv python3-dev git build-essential cython3
 
@@ -59,66 +59,6 @@ EOF
 systemctl daemon-reload
 systemctl enable becaticker
 
-# Create default config if needed
-[ ! -f config.json ] && sudo -u $ACTUAL_USER cat > config.json << 'EOF'
-{
-  "department_name": "PLATFORM 38 1/2",
-  "scrolling_messages": [
-    "Safe System Assessments",
-    "TIAs",
-    "ITS",
-    "Public Transport",
-    "PParking, Walking & Cycline"
-  ],
-  "calendar_urls": [
-    "https://www.officeholidays.com/ics-all/new-zealand"
-  ],
-  "web_port": 5000,
-  "matrix_options": {
-    "chain1": {
-      "rows": 64,
-      "cols": 128,
-      "chain_length": 2,
-      "parallel": 1,
-      "brightness": 75,
-      "gpio_mapping": "regular"
-    },
-    "chain2": {
-      "rows": 64,
-      "cols": 64,
-      "chain_length": 4,
-      "parallel": 1,
-      "brightness": 75,
-      "gpio_mapping": "regular"
-    }
-  },
-  "display_settings": {
-    "text_color": [
-      255,
-      255,
-      255
-    ],
-    "clock_color": [
-      0,
-      255,
-      0
-    ],
-    "background_color": [
-      0,
-      0,
-      0
-    ],
-    "scroll_speed": 0.05,
-    "calendar_refresh_minutes": 30
-  },
-  "arcade_mode": {
-    "enabled": True,
-    "trigger_command": "/usr/bin/emulationstation"
-  }
-}
-EOF
-
-sudo -u $ACTUAL_USER mkdir -p templates
 
 echo "Setup complete!"
 echo "Start with: sudo systemctl start becaticker"
