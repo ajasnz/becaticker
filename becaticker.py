@@ -830,7 +830,18 @@ class ClockDisplay:
 
         if display_type == "test":
             self._draw_test_pattern(colors)
-        # Clock drawing code removed - ready for new display content    def _draw_test_pattern(self, colors: dict) -> None:
+        elif display_type == "clock":
+            self._draw_analog_clock(colors)
+
+    def _draw_analog_clock(self, colors: dict) -> None:
+        """Draw the analog clock with center point and outer ring."""
+        # Draw the outer ring first
+        self._draw_outer_ring(colors["ticks"])
+        
+        # Draw the center point on top
+        self._draw_center_point(colors["hour_hand"], radius=3)
+
+    def _draw_test_pattern(self, colors: dict) -> None:
         """Draw colored bars spanning full width to test coordinate mapping."""
         # Draw horizontal colored bars across the full 128-pixel width
         # This will help us see which physical panels are being addressed
@@ -984,6 +995,16 @@ class ClockDisplay:
                     y1 + j - thickness // 2,
                     color,
                 )
+
+    def _draw_center_point(self, color: graphics.Color, radius: int = 2) -> None:
+        """Draw a center point (dot) at the center of the clock."""
+        self._draw_circle(self.center_x, self.center_y, radius, color, fill=True)
+
+    def _draw_outer_ring(self, color: graphics.Color, thickness: int = 2) -> None:
+        """Draw the outer ring of the analog clock."""
+        # Draw multiple circles for thickness
+        for i in range(thickness):
+            self._draw_circle(self.center_x, self.center_y, self.clock_radius - i, color)
 
 
 class UserManager:
