@@ -741,11 +741,13 @@ class AnalogClock:
             for dx in range(4):
                 for dy in range(4):
                     self._set_pixel(corner_x + dx, corner_y + dy, test_color)
-        
+
         # Center square
         for test_x in range(30, 34):  # 4x4 square near center
             for test_y in range(30, 34):
-                self._set_pixel(test_x, test_y, test_color)        # Calculate angles (0 degrees = 12 o'clock, clockwise)
+                self._set_pixel(
+                    test_x, test_y, test_color
+                )  # Calculate angles (0 degrees = 12 o'clock, clockwise)
         # Subtract 90 degrees to start from 12 o'clock instead of 3 o'clock
         hour_angle = ((hours * 30) + (minutes * 0.5) - 90) * 3.14159 / 180
         minute_angle = ((minutes * 6) - 90) * 3.14159 / 180
@@ -1080,14 +1082,14 @@ class BecaTicker:
         # Initialize single matrix instance with parallel chains
         self.matrix = self._create_matrix()
 
-        # Initialize displays with proper row offsets for parallel chains
-        # Chain 1: Text display (1x5 panels, 320x64) - rows 0-63
+        # Initialize displays with swapped row offsets based on actual wiring
+        # Chain 1: Text display (1x5 panels, 320x64) - rows 64-127 (actual wiring)
         self.text_display = TextDisplay(
-            self.matrix, self.config, self.calendar_manager, row_offset=0
+            self.matrix, self.config, self.calendar_manager, row_offset=64
         )
 
-        # Chain 2: Analog clock display (2x2 panels, 128x128) - rows 64-127
-        self.analog_clock = AnalogClock(self.matrix, self.config, row_offset=64)
+        # Chain 2: Analog clock display (2x2 panels, 128x128) - rows 0-63 (actual wiring)
+        self.analog_clock = AnalogClock(self.matrix, self.config, row_offset=0)
 
         # Threading
         self.running = False
