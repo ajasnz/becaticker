@@ -746,27 +746,24 @@ class ClockDisplay:
         local_x = logical_x % 64
         local_y = logical_y % 64
 
-        # Map to linear chain with corrected panel positions and Y-flip for bottom panels
-        # Top panels are correct, bottom panels need Y-coordinate flipping
-        if panel_y == 0:  # Logical top row - these are correct
-            if panel_x == 0:  # Logical top-left -> physical bottom-right
-                panel_offset = 256  # Bottom-right physical panel
-                physical_x = local_x + panel_offset
-                physical_y = local_y + self.row_offset
-            else:  # Logical top-right -> physical bottom-left
-                panel_offset = 192  # Bottom-left physical panel
-                physical_x = local_x + panel_offset
-                physical_y = local_y + self.row_offset
-        else:  # Logical bottom row - these need Y-flipping within their own panel
-            flipped_local_y = 63 - local_y  # Flip Y within the 64-pixel panel
-            if panel_x == 0:  # Logical bottom-left -> physical top-right
-                panel_offset = 128  # Top-right physical panel
-                physical_x = local_x + panel_offset
-                physical_y = flipped_local_y + self.row_offset
-            else:  # Logical bottom-right -> physical top-left
-                panel_offset = 64  # Top-left physical panel
-                physical_x = local_x + panel_offset
-                physical_y = flipped_local_y + self.row_offset
+        # Clean snake pattern mapping for rewired panels
+        # Chain: Panel1(BL) -> Panel2(BR) -> Panel3(TR) -> Panel4(TL)
+        # Physical layout:
+        # [Panel4: TL] [Panel3: TR]
+        # [Panel1: BL] [Panel2: BR]
+        if panel_y == 0:  # Top row (right-to-left in chain)
+            if panel_x == 0:  # Top-left -> Panel 4 (4th in chain)
+                panel_offset = 192  # Panel 4: pixels 192-255
+            else:  # Top-right -> Panel 3 (3rd in chain)
+                panel_offset = 128  # Panel 3: pixels 128-191
+        else:  # Bottom row (left-to-right in chain)  
+            if panel_x == 0:  # Bottom-left -> Panel 1 (1st in chain)
+                panel_offset = 0    # Panel 1: pixels 0-63
+            else:  # Bottom-right -> Panel 2 (2nd in chain)
+                panel_offset = 64   # Panel 2: pixels 64-127
+
+        physical_x = local_x + panel_offset
+        physical_y = local_y + self.row_offset
 
         return physical_x, physical_y
 
