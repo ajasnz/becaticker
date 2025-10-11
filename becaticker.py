@@ -674,129 +674,128 @@ class TextDisplay:
             self.calendar_scroll_pos = self.canvas.width
 
 
-
 class ClockDisplay:
     """
     Handles analog clock display on 2x2 panels - COMPLETELY REWRITTEN FROM SCRATCH
-    
+
     Physical Setup Understanding:
     - Chain 1: 5x1 text panels [P0][P1][P2][P3][P4] (rows 0-63)
     - Chain 2: 7 panels total, first 4 used for 2x2 clock [P0][P1][P2][P3][P4][P5][P6]
-    
+
     2x2 Clock Panel Layout (positioned to right of 5x1, bottom-aligned):
     Chain input starts at bottom-left panel (P0)
-    
+
     Physical connection: P0(BL,input) → P1(BR) → P2(TR) → P3(TL)
     Bottom panels P0 and P1 are UPSIDE DOWN (hzeller standard)
-    
+
     Physical Layout:
     +-------+-------+  ← Above 5x1 level
     | P3    | P2    |  ← P3(Top-Left,normal) | P2(Top-Right,normal)
-    +-------+-------+  
+    +-------+-------+
     | P0    | P1    |  ← P0(Bottom-Left,input,upside-down) | P1(Bottom-Right,upside-down)
     +-------+-------+  ← Level with 5x1 panels
     """
-    
+
     def __init__(self, matrix: RGBMatrix, config: Config, row_offset: int = 64):
         self.matrix = matrix
         self.config = config
         self.canvas = None
         self.row_offset = row_offset
-        
+
         # Clock appearance settings
         clock_color = self.config.get("display_settings.clock_color", [0, 255, 0])
         self.clock_color = graphics.Color(*clock_color)
-        
+
         # Clock positioning for 128x128 logical space
-        self.center_x = 64   # Center of 128x128 logical area
-        self.center_y = 64   # Center of 128x128 logical area  
-        self.radius = 45     # Radius to utilize full 2x2 space
-        
+        self.center_x = 64  # Center of 128x128 logical area
+        self.center_y = 64  # Center of 128x128 logical area
+        self.radius = 45  # Radius to utilize full 2x2 space
+
         # Arcade mode
         self.arcade_mode = False
         self.arcade_process = None
-    
+
     def _map_to_physical_panel(self, logical_x: int, logical_y: int) -> tuple:
         """
         Map logical 128x128 coordinates to physical panel coordinates.
-        
+
         NO MORE CONFUSION - This is the DEFINITIVE mapping:
-        
+
         Physical Panel Positions on Chain 2:
-        - P0: columns 0-63   (Bottom-Left, chain input, UPSIDE DOWN)  
+        - P0: columns 0-63   (Bottom-Left, chain input, UPSIDE DOWN)
         - P1: columns 64-127 (Bottom-Right, UPSIDE DOWN)
         - P2: columns 128-191 (Top-Right, normal)
         - P3: columns 192-255 (Top-Left, normal)
-        
+
         Logical to Physical Mapping:
         - Logical Bottom-Left (0-63, 64-127) → Physical P0 (upside down)
-        - Logical Bottom-Right (64-127, 64-127) → Physical P1 (upside down)  
+        - Logical Bottom-Right (64-127, 64-127) → Physical P1 (upside down)
         - Logical Top-Right (64-127, 0-63) → Physical P2 (normal)
         - Logical Top-Left (0-63, 0-63) → Physical P3 (normal)
         """
         # Ensure coordinates are within bounds
         logical_x = max(0, min(127, logical_x))
         logical_y = max(0, min(127, logical_y))
-        
+
         # Determine quadrant
         is_left = logical_x < 64
         is_top = logical_y < 64
-        
+
         # Get position within 64x64 panel
         panel_x = logical_x % 64
         panel_y = logical_y % 64
-        
+
         if is_left and is_top:
             # Logical Top-Left → Physical Panel P3 (normal orientation)
             matrix_x = 192 + panel_x
             matrix_y = self.row_offset + panel_y
-            
+
         elif not is_left and is_top:
             # Logical Top-Right → Physical Panel P2 (normal orientation)
-            matrix_x = 128 + panel_x  
+            matrix_x = 128 + panel_x
             matrix_y = self.row_offset + panel_y
-            
+
         elif is_left and not is_top:
             # Logical Bottom-Left → Physical Panel P0 (UPSIDE DOWN)
             matrix_x = 0 + (63 - panel_x)  # Flip X
             matrix_y = self.row_offset + (63 - panel_y)  # Flip Y
-            
+
         elif not is_left and not is_top:
             # Logical Bottom-Right → Physical Panel P1 (UPSIDE DOWN)
             matrix_x = 64 + (63 - panel_x)  # Flip X, offset to P1
             matrix_y = self.row_offset + (63 - panel_y)  # Flip Y
-            
+
         else:
             # Fallback (should never reach here)
             matrix_x = logical_x
             matrix_y = self.row_offset + logical_y
-            
+
         return matrix_x, matrix_y
-    
+
     def update_display(self) -> None:
         """Update the clock display."""
         if self.arcade_mode or not self.canvas:
             return
-            
+
         now = datetime.now()
-        
+
         # Draw clock components
         self._draw_clock_face()
-        
+
         # Calculate hand angles (12 o'clock = -90°, clockwise)
         hour_angle = ((now.hour % 12) + now.minute / 60.0) * 30 - 90
         minute_angle = now.minute * 6 - 90
         second_angle = now.second * 6 - 90
-        
+
         # Draw colored hands
-        self._draw_hand(hour_angle, self.radius * 0.5, 3, (255, 0, 0))    # Red hour
-        self._draw_hand(minute_angle, self.radius * 0.8, 2, (0, 255, 0))  # Green minute  
+        self._draw_hand(hour_angle, self.radius * 0.5, 3, (255, 0, 0))  # Red hour
+        self._draw_hand(minute_angle, self.radius * 0.8, 2, (0, 255, 0))  # Green minute
         self._draw_hand(second_angle, self.radius * 0.9, 1, (0, 0, 255))  # Blue second
-        
+
         # Draw center dot
         center_x, center_y = self._map_to_physical_panel(self.center_x, self.center_y)
         self.canvas.SetPixel(center_x, center_y, 255, 255, 255)
-    
+
     def _draw_clock_face(self) -> None:
         """Draw clock face with Roman numerals."""
         # Draw outer circle
@@ -804,72 +803,102 @@ class ClockDisplay:
             rad = math.radians(angle)
             x = int(self.center_x + self.radius * math.cos(rad))
             y = int(self.center_y + self.radius * math.sin(rad))
-            
+
             phys_x, phys_y = self._map_to_physical_panel(x, y)
-            
+
             if 0 <= phys_x < self.canvas.width and 0 <= phys_y < self.canvas.height:
-                self.canvas.SetPixel(phys_x, phys_y, 
-                                   self.clock_color.red, 
-                                   self.clock_color.green, 
-                                   self.clock_color.blue)
-        
+                self.canvas.SetPixel(
+                    phys_x,
+                    phys_y,
+                    self.clock_color.red,
+                    self.clock_color.green,
+                    self.clock_color.blue,
+                )
+
         # Roman numerals
-        roman_numerals = ["XII", "I", "II", "III", "IV", "V", 
-                         "VI", "VII", "VIII", "IX", "X", "XI"]
-        
+        roman_numerals = [
+            "XII",
+            "I",
+            "II",
+            "III",
+            "IV",
+            "V",
+            "VI",
+            "VII",
+            "VIII",
+            "IX",
+            "X",
+            "XI",
+        ]
+
         font = graphics.Font()
         font.LoadFont("hzeller/fonts/4x6.bdf")
-        
+
         for hour in range(12):
             angle = hour * 30 - 90  # Start at 12 o'clock
             rad = math.radians(angle)
-            
+
             # Position slightly inside circle
             text_radius = self.radius - 8
             x = int(self.center_x + text_radius * math.cos(rad))
             y = int(self.center_y + text_radius * math.sin(rad))
-            
+
             phys_x, phys_y = self._map_to_physical_panel(x, y)
-            
+
             # Center text roughly
             text_width = len(roman_numerals[hour]) * 2
-            graphics.DrawText(self.canvas, font, 
-                            phys_x - text_width, phys_y + 2,
-                            graphics.Color(255, 255, 255), 
-                            roman_numerals[hour])
-    
-    def _draw_hand(self, angle: float, length: float, thickness: int, color: tuple) -> None:
+            graphics.DrawText(
+                self.canvas,
+                font,
+                phys_x - text_width,
+                phys_y + 2,
+                graphics.Color(255, 255, 255),
+                roman_numerals[hour],
+            )
+
+    def _draw_hand(
+        self, angle: float, length: float, thickness: int, color: tuple
+    ) -> None:
         """Draw a clock hand with specified color."""
         rad = math.radians(angle)
         end_x = int(self.center_x + length * math.cos(rad))
         end_y = int(self.center_y + length * math.sin(rad))
-        
+
         r, g, b = color
-        
+
         # Draw hand with thickness
         for t in range(-thickness, thickness + 1):
             for t2 in range(-thickness, thickness + 1):
                 if t * t + t2 * t2 <= thickness * thickness:
-                    self._draw_line(self.center_x + t, self.center_y + t2,
-                                  end_x + t, end_y + t2, r, g, b)
-    
-    def _draw_line(self, x1: int, y1: int, x2: int, y2: int, r: int, g: int, b: int) -> None:
+                    self._draw_line(
+                        self.center_x + t,
+                        self.center_y + t2,
+                        end_x + t,
+                        end_y + t2,
+                        r,
+                        g,
+                        b,
+                    )
+
+    def _draw_line(
+        self, x1: int, y1: int, x2: int, y2: int, r: int, g: int, b: int
+    ) -> None:
         """Draw a line between two points using Bresenham's algorithm."""
         dx = abs(x2 - x1)
         dy = abs(y2 - y1)
         sx = 1 if x1 < x2 else -1
         sy = 1 if y1 < y2 else -1
         err = dx - dy
-        
+
         while True:
             phys_x, phys_y = self._map_to_physical_panel(x1, y1)
-            
+
             if 0 <= phys_x < self.canvas.width and 0 <= phys_y < self.canvas.height:
                 self.canvas.SetPixel(phys_x, phys_y, r, g, b)
-                
+
             if x1 == x2 and y1 == y2:
                 break
-                
+
             e2 = 2 * err
             if e2 > -dy:
                 err -= dy
@@ -877,18 +906,18 @@ class ClockDisplay:
             if e2 < dx:
                 err += dx
                 y1 += sy
-    
+
     # Arcade mode methods (simplified for now)
     def enter_arcade_mode(self) -> bool:
         """Enter arcade mode."""
         self.arcade_mode = True
         return True
-        
+
     def exit_arcade_mode(self) -> bool:
         """Exit arcade mode."""
         self.arcade_mode = False
         return True
-        
+
     def is_arcade_active(self) -> bool:
         """Check if arcade mode is active."""
         return self.arcade_mode
