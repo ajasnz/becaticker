@@ -733,12 +733,6 @@ class TextDisplay:
             self.calendar_scroll_pos = self.canvas.width
             self.event_change_time = time.time()
 
-        # Change event every 12 seconds
-        if time.time() - self.event_change_time > 12:
-            self.current_event_index = (self.current_event_index + 1) % len(events)
-            self.event_change_time = time.time()
-            self.calendar_scroll_pos = self.canvas.width
-
         current_event = events[self.current_event_index]
 
         # Format event text
@@ -781,9 +775,12 @@ class TextDisplay:
             scroll_speed * 10
         )  # Convert to pixel movement per frame
 
-        # Reset scroll when text completely off screen
+        # Move to next event when text completely off screen (instead of time-based)
         if self.calendar_scroll_pos + text_len < 0:
             self.calendar_scroll_pos = self.canvas.width
+            # Move to next event immediately when current event finishes scrolling
+            self.current_event_index = (self.current_event_index + 1) % len(events)
+            self.event_change_time = time.time()  # Update time for logging purposes
 
 
 class ClockDisplay:
@@ -887,14 +884,23 @@ class ClockDisplay:
     def _get_colors(self):
         """Get current colors from configuration."""
         clock_config = self.config.get("second_display.settings", {})
-        
+
         # Debug logging to help troubleshoot configuration issues
-        if hasattr(self, '_last_config_debug') and time.time() - self._last_config_debug > 30:
-            logger.info(f"Clock config debug - face_style: {clock_config.get('face_style', 'NOT_SET')}")
-            logger.info(f"Clock config debug - hand_style: {clock_config.get('hand_style', 'NOT_SET')}")
-            logger.info(f"Clock config debug - marker_style: {clock_config.get('marker_style', 'NOT_SET')}")
+        if (
+            hasattr(self, "_last_config_debug")
+            and time.time() - self._last_config_debug > 30
+        ):
+            logger.info(
+                f"Clock config debug - face_style: {clock_config.get('face_style', 'NOT_SET')}"
+            )
+            logger.info(
+                f"Clock config debug - hand_style: {clock_config.get('hand_style', 'NOT_SET')}"
+            )
+            logger.info(
+                f"Clock config debug - marker_style: {clock_config.get('marker_style', 'NOT_SET')}"
+            )
             self._last_config_debug = time.time()
-        elif not hasattr(self, '_last_config_debug'):
+        elif not hasattr(self, "_last_config_debug"):
             self._last_config_debug = time.time()
 
         return {
