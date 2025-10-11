@@ -689,12 +689,13 @@ class ClockDisplay:
 
         # For 2x2 configuration on chain 2 (parallel chain):
         # Chain 1: 5x1 panels (320x64, rows 0-63)
-        # Chain 2: 4x1 panels arranged as 2x2 (256x64, rows 64-127)
-        # But we want to treat the first 2 panels as top row and next 2 as bottom row
-        # Effective 2x2 area: 128x128 logical pixels mapped to physical panels
+        # Chain 2: First 4 panels arranged as 2x2 (logical 128x128 space)
+        # Logical 2x2 area: 128x128 pixels mapped to physical panels via U-mapping
         self.center_x = 64  # Center X of the 128-pixel logical area
-        self.center_y = 32  # Center Y within the 64-pixel chain height
-        self.radius = 28  # Radius that fits in the available area        # Arcade mode
+        self.center_y = 64  # Center Y of the 128-pixel logical area (full 2x2 space)
+        self.radius = 45  # Radius that utilizes the full 2x2 area
+
+        # Arcade mode
         self.arcade_mode = False
         self.arcade_process = None
 
@@ -708,13 +709,18 @@ class ClockDisplay:
         Logical 2x2 layout (128x128):
         +-------+-------+
         | TL    | TR    |  (64x64 each)
-        | P0    | P1    |
+        | P0    | P1    |  Y: 0-63
         +-------+-------+
         | BL    | BR    |
-        | P3    | P2    |  (U-mapping: P0->P1->P2->P3)
+        | P3    | P2    |  Y: 64-127
         +-------+-------+
+        U-mapping: P0->P1->P2->P3
         """
-        # Determine which quadrant we're in (0-3 for the 4 panels)
+        # Clamp coordinates to logical 128x128 space
+        x = max(0, min(127, x))
+        y = max(0, min(127, y))
+
+        # Determine which quadrant we're in
         quad_x = x // 64  # 0=left, 1=right
         quad_y = y // 64  # 0=top, 1=bottom
 
@@ -725,16 +731,20 @@ class ClockDisplay:
         # U-mapping: Top-Left(P0) -> Top-Right(P1) -> Bottom-Right(P2) -> Bottom-Left(P3)
         if quad_x == 0 and quad_y == 0:  # Top-Left -> Panel 0
             matrix_x = panel_x
+            matrix_y = self.row_offset + panel_y
         elif quad_x == 1 and quad_y == 0:  # Top-Right -> Panel 1
             matrix_x = 64 + panel_x
+            matrix_y = self.row_offset + panel_y
         elif quad_x == 1 and quad_y == 1:  # Bottom-Right -> Panel 2
             matrix_x = 128 + panel_x
+            matrix_y = self.row_offset + panel_y
         elif quad_x == 0 and quad_y == 1:  # Bottom-Left -> Panel 3
             matrix_x = 192 + panel_x
+            matrix_y = self.row_offset + panel_y
         else:
             matrix_x = x  # Fallback
+            matrix_y = self.row_offset + y
 
-        matrix_y = self.row_offset + panel_y
         return matrix_x, matrix_y
 
     def update_display(self) -> None:
@@ -771,9 +781,7 @@ class ClockDisplay:
         )  # Second hand - Blue
 
         # Draw center dot
-        mapped_x, mapped_y = self._map_2x2_coordinates(
-            self.center_x, self.center_y - self.row_offset
-        )
+        mapped_x, mapped_y = self._map_2x2_coordinates(self.center_x, self.center_y)
         self.canvas.SetPixel(mapped_x, mapped_y, 255, 255, 255)
 
         # Note: Canvas swap is handled by main display loop
@@ -851,7 +859,7 @@ class ClockDisplay:
             y = int(self.center_y + self.radius * math.sin(rad))
 
             # Map coordinates for 2x2 U-mapped layout
-            mapped_x, mapped_y = self._map_2x2_coordinates(x, y - self.row_offset)
+            mapped_x, mapped_y = self._map_2x2_coordinates(x, y)
 
             if 0 <= mapped_x < self.canvas.width and 0 <= mapped_y < self.canvas.height:
                 self.canvas.SetPixel(
@@ -892,7 +900,7 @@ class ClockDisplay:
             y = int(self.center_y + text_radius * math.sin(rad))
 
             # Map coordinates for 2x2 U-mapped layout
-            mapped_x, mapped_y = self._map_2x2_coordinates(x, y - self.row_offset)
+            mapped_x, mapped_y = self._map_2x2_coordinates(x, y)
 
             # Draw Roman numeral
             roman_text = roman_numerals[hour]
@@ -947,7 +955,7 @@ class ClockDisplay:
 
         while True:
             # Map coordinates for 2x2 U-mapped layout
-            mapped_x, mapped_y = self._map_2x2_coordinates(x1, y1 - self.row_offset)
+            mapped_x, mapped_y = self._map_2x2_coordinates(x1, y1)
 
             if 0 <= mapped_x < self.canvas.width and 0 <= mapped_y < self.canvas.height:
                 self.canvas.SetPixel(mapped_x, mapped_y, r, g, b)
