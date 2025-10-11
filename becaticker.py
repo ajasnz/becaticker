@@ -715,23 +715,58 @@ class ClockDisplay:
 
     def _map_to_physical_panel(self, logical_x: int, logical_y: int) -> tuple:
         """
-        Simple coordinate passthrough for hzeller U-mapper.
-        
-        The hzeller U-mapper handles all the physical panel mapping automatically:
-        - Panel arrangement and chain flow
-        - Coordinate transformations 
-        - Upside-down panel handling
-        
-        We just need to ensure coordinates are within bounds and add the row offset.
+        Map logical 128x128 coordinates to physical panels for custom chain order.
+
+        Custom Chain Order: TL → BL → BR → TR
+        Physical Panel Positions:
+        - P0 (TL): columns 0-63,   rows 0-63   (Top-Left, chain input, normal)
+        - P1 (BL): columns 64-127, rows 0-63   (Bottom-Left, INVERTED 180°)
+        - P2 (BR): columns 128-191, rows 0-63  (Bottom-Right, INVERTED 180°)
+        - P3 (TR): columns 192-255, rows 0-63  (Top-Right, normal)
+
+        Logical to Physical Mapping:
+        - Logical Top-Left (0-63, 0-63) → Physical P0 (TL, normal)
+        - Logical Bottom-Left (0-63, 64-127) → Physical P1 (BL, inverted 180°)
+        - Logical Bottom-Right (64-127, 64-127) → Physical P2 (BR, inverted 180°)
+        - Logical Top-Right (64-127, 0-63) → Physical P3 (TR, normal)
         """
         # Ensure coordinates are within bounds
         logical_x = max(0, min(127, logical_x))
         logical_y = max(0, min(127, logical_y))
-        
-        # Pass coordinates directly to hzeller U-mapper with row offset
-        matrix_x = logical_x
-        matrix_y = self.row_offset + logical_y
-        
+
+        # Determine quadrant
+        is_left = logical_x < 64
+        is_top = logical_y < 64
+
+        # Get position within 64x64 panel
+        panel_x = logical_x % 64
+        panel_y = logical_y % 64
+
+        if is_left and is_top:
+            # Logical Top-Left → Physical Panel P0 (TL, normal orientation)
+            matrix_x = 0 + panel_x
+            matrix_y = self.row_offset + panel_y
+
+        elif is_left and not is_top:
+            # Logical Bottom-Left → Physical Panel P1 (BL, INVERTED 180°)
+            matrix_x = 64 + (63 - panel_x)  # Flip X, offset to P1
+            matrix_y = self.row_offset + (63 - panel_y)  # Flip Y
+
+        elif not is_left and not is_top:
+            # Logical Bottom-Right → Physical Panel P2 (BR, INVERTED 180°)
+            matrix_x = 128 + (63 - panel_x)  # Flip X, offset to P2
+            matrix_y = self.row_offset + (63 - panel_y)  # Flip Y
+
+        elif not is_left and is_top:
+            # Logical Top-Right → Physical Panel P3 (TR, normal orientation)
+            matrix_x = 192 + panel_x
+            matrix_y = self.row_offset + panel_y
+
+        else:
+            # Fallback (should never reach here)
+            matrix_x = logical_x
+            matrix_y = self.row_offset + logical_y
+
         return matrix_x, matrix_y
 
     def update_display(self) -> None:
@@ -1097,8 +1132,7 @@ class BecaTicker:
         options.brightness = chain_config.get("brightness", 40)
         options.hardware_mapping = chain_config.get("hardware_mapping", "regular")
         options.gpio_slowdown = chain_config.get("gpio_slowdown", 2)
-        # Use built-in U-mapper from hzeller for chain 2 (clock display)
-        options.pixel_mapper_config = "U-mapper"
+        # Custom chain order: TL → BL → BR → TR (BL and BR inverted)
         options.drop_privileges = False
         options.disable_hardware_pulsing = True
 
