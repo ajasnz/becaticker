@@ -836,26 +836,26 @@ class ClockDisplay:
     def _draw_analog_clock(self, colors: dict, now: datetime) -> None:
         """Draw the complete analog clock with all elements."""
         # Draw elements in order from back to front
-        
+
         # 1. Draw the outer ring
         self._draw_outer_ring(colors["ticks"])
-        
+
         # 2. Draw hour tick marks
         self._draw_hour_ticks(colors["ticks"])
-        
+
         # 3. Draw Roman numerals
         self._draw_roman_numerals(colors["numbers"])
-        
+
         # 4. Draw clock hands
         self._draw_clock_hands(colors, now)
-        
+
         # 5. Draw center point on top
         self._draw_center_point(colors["hour_hand"], radius=3)
-        
+
         # 6. Draw digital time if enabled
         if self.config.get("second_display.settings.show_digital", True):
             self._draw_digital_time(colors["digital"], now)
-            
+
         # 7. Draw date if enabled
         if self.config.get("second_display.settings.show_date", True):
             self._draw_date(colors["date"], now)
@@ -1031,17 +1031,17 @@ class ClockDisplay:
         """Draw Roman numerals at 12, 3, 6, 9 positions."""
         # Roman numerals and their positions
         numerals = [
-            ("XII", 0, -self.clock_radius + 15),    # 12 o'clock (top)
-            ("III", self.clock_radius - 15, 0),     # 3 o'clock (right)
-            ("VI", 0, self.clock_radius - 8),       # 6 o'clock (bottom)
-            ("IX", -self.clock_radius + 8, 0),      # 9 o'clock (left)
+            ("XII", 0, -self.clock_radius + 15),  # 12 o'clock (top)
+            ("III", self.clock_radius - 15, 0),  # 3 o'clock (right)
+            ("VI", 0, self.clock_radius - 8),  # 6 o'clock (bottom)
+            ("IX", -self.clock_radius + 8, 0),  # 9 o'clock (left)
         ]
-        
+
         for numeral, offset_x, offset_y in numerals:
             # Calculate text position (center the text)
             text_x = self.center_x + offset_x - (len(numeral) * 3)  # Rough centering
             text_y = self.center_y + offset_y + 4  # Adjust for font baseline
-            
+
             # Draw the text
             graphics.DrawText(
                 self.canvas, self.small_font, text_x, text_y, color, numeral
@@ -1050,43 +1050,43 @@ class ClockDisplay:
     def _draw_hour_ticks(self, color: graphics.Color) -> None:
         """Draw small tick marks for each hour position."""
         import math
-        
+
         for hour in range(12):
             # Calculate angle for this hour (0 = 12 o'clock)
             angle = math.radians(hour * 30 - 90)  # -90 to start at top
-            
+
             # Skip the positions where we have Roman numerals
             if hour % 3 == 0:
                 continue
-                
+
             # Calculate tick positions (inner and outer points)
             outer_x = self.center_x + int((self.clock_radius - 5) * math.cos(angle))
             outer_y = self.center_y + int((self.clock_radius - 5) * math.sin(angle))
             inner_x = self.center_x + int((self.clock_radius - 12) * math.cos(angle))
             inner_y = self.center_y + int((self.clock_radius - 12) * math.sin(angle))
-            
+
             # Draw the tick mark
             self._draw_line(inner_x, inner_y, outer_x, outer_y, color)
 
     def _draw_clock_hands(self, colors: dict, now: datetime) -> None:
         """Draw hour, minute, and second hands."""
         import math
-        
+
         # Calculate angles for each hand
         hours = now.hour % 12
         minutes = now.minute
         seconds = now.second
-        
+
         # Calculate angles (0 degrees = 12 o'clock, clockwise)
         hour_angle = math.radians((hours * 30 + minutes * 0.5) - 90)
         minute_angle = math.radians((minutes * 6) - 90)
         second_angle = math.radians((seconds * 6) - 90)
-        
+
         # Hand lengths
         hour_length = self.clock_radius - 20
         minute_length = self.clock_radius - 10
         second_length = self.clock_radius - 8
-        
+
         # Calculate hand end points
         hour_x = self.center_x + int(hour_length * math.cos(hour_angle))
         hour_y = self.center_y + int(hour_length * math.sin(hour_angle))
@@ -1094,13 +1094,23 @@ class ClockDisplay:
         minute_y = self.center_y + int(minute_length * math.sin(minute_angle))
         second_x = self.center_x + int(second_length * math.cos(second_angle))
         second_y = self.center_y + int(second_length * math.sin(second_angle))
-        
+
         # Draw the hands (thickest to thinnest)
         self._draw_thick_line(
-            self.center_x, self.center_y, hour_x, hour_y, colors["hour_hand"], thickness=3
+            self.center_x,
+            self.center_y,
+            hour_x,
+            hour_y,
+            colors["hour_hand"],
+            thickness=3,
         )
         self._draw_thick_line(
-            self.center_x, self.center_y, minute_x, minute_y, colors["minute_hand"], thickness=2
+            self.center_x,
+            self.center_y,
+            minute_x,
+            minute_y,
+            colors["minute_hand"],
+            thickness=2,
         )
         self._draw_line(
             self.center_x, self.center_y, second_x, second_y, colors["second_hand"]
@@ -1109,11 +1119,11 @@ class ClockDisplay:
     def _draw_digital_time(self, color: graphics.Color, now: datetime) -> None:
         """Draw digital time below the analog clock."""
         time_str = now.strftime("%H:%M:%S")
-        
+
         # Position below the clock
         text_x = self.center_x - (len(time_str) * 3)  # Rough centering
         text_y = self.center_y + self.clock_radius + 15
-        
+
         # Make sure it fits within bounds
         if text_y < self.height - 10:
             graphics.DrawText(
@@ -1123,11 +1133,11 @@ class ClockDisplay:
     def _draw_date(self, color: graphics.Color, now: datetime) -> None:
         """Draw date below the digital time."""
         date_str = now.strftime("%Y-%m-%d")
-        
+
         # Position below the digital time
-        text_x = self.center_x - (len(date_str) * 3)  # Rough centering  
+        text_x = self.center_x - (len(date_str) * 3)  # Rough centering
         text_y = self.center_y + self.clock_radius + 30
-        
+
         # Make sure it fits within bounds
         if text_y < self.height - 5:
             graphics.DrawText(
