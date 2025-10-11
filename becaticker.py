@@ -746,19 +746,19 @@ class ClockDisplay:
         local_x = logical_x % 64
         local_y = logical_y % 64
 
-        # Map to linear chain: Panel0, Panel1, Panel2, Panel3
-        # Physical wiring: TL -> TR -> BL -> BR (as you wired it)
-        # Logical layout:  TL    TR    BL    BR
+        # Map to linear chain with offset adjustment
+        # It appears the first panel (offset 0) isn't working, so shift everything
+        # Physical chain appears to be: [unused/broken] [TL] [TR] [BL] [BR]
         if panel_y == 0:  # Top row
-            if panel_x == 0:  # Top-left (Panel 0)
-                panel_offset = 0
-            else:  # Top-right (Panel 1)
+            if panel_x == 0:  # Top-left -> use second panel position
                 panel_offset = 64
-        else:  # Bottom row
-            if panel_x == 0:  # Bottom-left (Panel 2)
+            else:  # Top-right -> use third panel position
                 panel_offset = 128
-            else:  # Bottom-right (Panel 3)
+        else:  # Bottom row
+            if panel_x == 0:  # Bottom-left -> use fourth panel position
                 panel_offset = 192
+            else:  # Bottom-right -> use fifth panel position (if it exists)
+                panel_offset = 256
 
         physical_x = local_x + panel_offset
         physical_y = local_y + self.row_offset
@@ -833,42 +833,42 @@ class ClockDisplay:
         """Draw colored bars spanning full width to test coordinate mapping."""
         # Draw horizontal colored bars across the full 128-pixel width
         # This will help us see which physical panels are being addressed
-        
+
         # Bar colors for different Y positions
         test_colors = [
-            graphics.Color(255, 0, 0),    # Red - Y=0-7
-            graphics.Color(0, 255, 0),    # Green - Y=8-15
-            graphics.Color(0, 0, 255),    # Blue - Y=16-23
+            graphics.Color(255, 0, 0),  # Red - Y=0-7
+            graphics.Color(0, 255, 0),  # Green - Y=8-15
+            graphics.Color(0, 0, 255),  # Blue - Y=16-23
             graphics.Color(255, 255, 0),  # Yellow - Y=24-31
             graphics.Color(255, 0, 255),  # Magenta - Y=32-39
             graphics.Color(0, 255, 255),  # Cyan - Y=40-47
-            graphics.Color(255, 255, 255), # White - Y=48-55
-            graphics.Color(128, 128, 128), # Gray - Y=56-63
-            graphics.Color(255, 128, 0),   # Orange - Y=64-71
-            graphics.Color(128, 255, 0),   # Lime - Y=72-79
-            graphics.Color(128, 0, 255),   # Purple - Y=80-87
-            graphics.Color(255, 128, 128), # Pink - Y=88-95
-            graphics.Color(128, 255, 255), # Light cyan - Y=96-103
-            graphics.Color(255, 255, 128), # Light yellow - Y=104-111
-            graphics.Color(64, 64, 64),    # Dark gray - Y=112-119
-            graphics.Color(192, 192, 192), # Light gray - Y=120-127
+            graphics.Color(255, 255, 255),  # White - Y=48-55
+            graphics.Color(128, 128, 128),  # Gray - Y=56-63
+            graphics.Color(255, 128, 0),  # Orange - Y=64-71
+            graphics.Color(128, 255, 0),  # Lime - Y=72-79
+            graphics.Color(128, 0, 255),  # Purple - Y=80-87
+            graphics.Color(255, 128, 128),  # Pink - Y=88-95
+            graphics.Color(128, 255, 255),  # Light cyan - Y=96-103
+            graphics.Color(255, 255, 128),  # Light yellow - Y=104-111
+            graphics.Color(64, 64, 64),  # Dark gray - Y=112-119
+            graphics.Color(192, 192, 192),  # Light gray - Y=120-127
         ]
-        
+
         # Draw bars using logical coordinates (_set_pixel)
         for bar_index in range(16):
             y_start = bar_index * 8
             color = test_colors[bar_index]
-            
+
             # Draw full-width bar (X from 0 to 127)
             for x in range(128):
                 for y in range(y_start, y_start + 8):  # Each bar is 8 pixels tall
                     if y < 128:  # Stay within bounds
                         self._set_pixel(x, y, color)
-        
+
         # Also draw direct physical reference bars to see the actual panel order
         # These bypass _set_pixel and go directly to physical coordinates
         border_color = graphics.Color(255, 255, 255)  # White borders
-        
+
         # Draw white borders around each physical panel (64 pixels wide each)
         for panel_offset in [0, 64, 128, 192]:
             # Top border
@@ -876,14 +876,26 @@ class ClockDisplay:
                 physical_x = x + panel_offset
                 physical_y = 0 + self.row_offset
                 if physical_x < self.canvas.width and physical_y < self.canvas.height:
-                    self.canvas.SetPixel(physical_x, physical_y, border_color.red, border_color.green, border_color.blue)
-            
-            # Bottom border  
+                    self.canvas.SetPixel(
+                        physical_x,
+                        physical_y,
+                        border_color.red,
+                        border_color.green,
+                        border_color.blue,
+                    )
+
+            # Bottom border
             for x in range(64):
                 physical_x = x + panel_offset
                 physical_y = 63 + self.row_offset
                 if physical_x < self.canvas.width and physical_y < self.canvas.height:
-                    self.canvas.SetPixel(physical_x, physical_y, border_color.red, border_color.green, border_color.blue)
+                    self.canvas.SetPixel(
+                        physical_x,
+                        physical_y,
+                        border_color.red,
+                        border_color.green,
+                        border_color.blue,
+                    )
 
     def _draw_analog_clock(self, now: datetime, colors: dict) -> None:
         """Draw analog clock face with hands."""
