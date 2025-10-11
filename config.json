@@ -78,7 +78,7 @@
   },
   "second_display": {
     "enabled": true,
-    "type": "test",
+    "type": "clock",
     "layout": "2x2",
     "chain": 2,
     "settings": {
