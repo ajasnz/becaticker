@@ -345,9 +345,13 @@ class TextDisplay:
 
     def reset_message_scrolling(self):
         """Reset message scrolling state to prevent index out of range errors."""
-        logger.info(f"Resetting message scrolling (was at index {self.current_message_index})")
+        logger.info(
+            f"Resetting message scrolling (was at index {self.current_message_index})"
+        )
         self.current_message_index = 0
-        self.scroll_pos = self.canvas.width if hasattr(self, 'canvas') and self.canvas else 0
+        self.scroll_pos = (
+            self.canvas.width if hasattr(self, "canvas") and self.canvas else 0
+        )
         self.message_change_time = time.time()
 
     def _load_default_fonts(self):
@@ -593,7 +597,9 @@ class TextDisplay:
 
         # Check if current message index is out of bounds (can happen if messages list was reduced)
         if self.current_message_index >= len(messages):
-            logger.warning(f"Message index {self.current_message_index} out of bounds for {len(messages)} messages. Resetting to 0.")
+            logger.warning(
+                f"Message index {self.current_message_index} out of bounds for {len(messages)} messages. Resetting to 0."
+            )
             self.current_message_index = 0
             self.scroll_pos = self.canvas.width  # Reset scroll position to start
             self.message_change_time = time.time()
@@ -690,7 +696,9 @@ class TextDisplay:
 
         # Check if current event index is out of bounds (can happen if events list was reduced)
         if self.current_event_index >= len(events):
-            logger.warning(f"Event index {self.current_event_index} out of bounds for {len(events)} events. Resetting to 0.")
+            logger.warning(
+                f"Event index {self.current_event_index} out of bounds for {len(events)} events. Resetting to 0."
+            )
             self.current_event_index = 0
             self.calendar_scroll_pos = self.canvas.width
             self.event_change_time = time.time()
@@ -773,7 +781,7 @@ class ClockDisplay:
         self.center_x = self.width // 2
         self.center_y = self.height // 2
         # Use a conservative radius that ensures everything fits well within the display
-        self.clock_radius = 45  # Reduced radius to ensure all elements fit properly
+        self.clock_radius = 60  # Reduced radius to ensure all elements fit properly
 
         # For 2x2 layout, we need to map logical coordinates to physical panel coordinates
         # Each panel is 64x64, arranged as:
@@ -1519,9 +1527,9 @@ class BecaTicker:
                     logger.info(
                         f"Updated scrolling_messages: {old_count} -> {new_count} messages"
                     )
-                    
+
                     # Reset message index to prevent index out of range errors
-                    if hasattr(self, 'text_display') and self.text_display:
+                    if hasattr(self, "text_display") and self.text_display:
                         self.text_display.reset_message_scrolling()
 
                 if "calendar_urls" in new_config:
