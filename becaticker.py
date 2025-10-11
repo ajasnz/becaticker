@@ -873,10 +873,12 @@ class AnalogClock:
         """Set a pixel with bounds checking and row offset for parallel chain."""
         # Apply row offset for parallel chain support and bounds checking
         adjusted_y = y + self.row_offset
-        
-        if (0 <= x < self.clock_width and 
-            self.row_offset <= adjusted_y < self.row_offset + self.clock_height and
-            self.canvas):
+
+        if (
+            0 <= x < self.clock_width
+            and self.row_offset <= adjusted_y < self.row_offset + self.clock_height
+            and self.canvas
+        ):
             self.canvas.SetPixel(x, adjusted_y, color.red, color.green, color.blue)
 
 
@@ -1092,12 +1094,12 @@ class BecaTicker:
         options.brightness = chain_config.get("brightness", 40)
         options.hardware_mapping = chain_config.get("hardware_mapping", "regular")
         options.gpio_slowdown = chain_config.get("gpio_slowdown", 2)
-        
+
         # Set pixel mapper for 2x2 arrangement on parallel chain
         pixel_mapper = chain_config.get("pixel_mapper_config", "U-mapper")
         if pixel_mapper:
             options.pixel_mapper_config = pixel_mapper
-        
+
         options.drop_privileges = False
         options.disable_hardware_pulsing = True
 
