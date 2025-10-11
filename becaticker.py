@@ -1028,13 +1028,16 @@ class ClockDisplay:
             )
 
     def _draw_roman_numerals(self, color: graphics.Color) -> None:
-        """Draw Roman numerals at 12, 3, 6, 9 positions."""
+        """Draw Roman numerals at 12, 3, 6, 9 positions inside the clock ring."""
+        # Position numerals inside the clock ring (closer to center)
+        numeral_radius = self.clock_radius - 20  # 20 pixels inside the outer ring
+        
         # Roman numerals and their positions
         numerals = [
-            ("XII", 0, -self.clock_radius + 15),  # 12 o'clock (top)
-            ("III", self.clock_radius - 15, 0),  # 3 o'clock (right)
-            ("VI", 0, self.clock_radius - 8),  # 6 o'clock (bottom)
-            ("IX", -self.clock_radius + 8, 0),  # 9 o'clock (left)
+            ("XII", 0, -numeral_radius),      # 12 o'clock (top)
+            ("III", numeral_radius, 0),       # 3 o'clock (right)
+            ("VI", 0, numeral_radius),        # 6 o'clock (bottom)
+            ("IX", -numeral_radius, 0),       # 9 o'clock (left)
         ]
 
         for numeral, offset_x, offset_y in numerals:
