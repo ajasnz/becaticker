@@ -1025,33 +1025,33 @@ class ClockDisplay:
         self._draw_circle(self.center_x, self.center_y, self.clock_radius, color)
 
     def _draw_roman_numerals(self, color: graphics.Color) -> None:
-        """Draw Roman numerals at 12, 3, 6, 9 positions inside the clock ring."""
+        """Draw Roman numerals at 12, 3, 6, 9 positions - positioned like tick marks inside the ring."""
         import math
-        
-        # Position numerals well inside the clock ring
-        numeral_radius = self.clock_radius - 15  # 15 pixels inside the outer ring
-        
+
+        # Position numerals at the same radius as tick marks (closer to the ring)
+        numeral_radius = self.clock_radius - 6  # Same area as tick marks
+
         # Roman numerals with their angles (in degrees)
         numerals = [
-            ("XII", 0),    # 12 o'clock
-            ("III", 90),   # 3 o'clock  
-            ("VI", 180),   # 6 o'clock
-            ("IX", 270),   # 9 o'clock
+            ("XII", 0),  # 12 o'clock
+            ("III", 90),  # 3 o'clock
+            ("VI", 180),  # 6 o'clock
+            ("IX", 270),  # 9 o'clock
         ]
 
         for numeral, angle_deg in numerals:
             # Convert to radians and adjust so 0° is at top
             angle_rad = math.radians(angle_deg - 90)
-            
+
             # Calculate position using trigonometry
             x = self.center_x + int(numeral_radius * math.cos(angle_rad))
             y = self.center_y + int(numeral_radius * math.sin(angle_rad))
-            
+
             # Better text centering based on numeral length
             text_width = len(numeral) * 4  # Approximate character width
             text_x = x - text_width // 2
             text_y = y + 3  # Adjust for font baseline
-            
+
             # Draw the text
             graphics.DrawText(
                 self.canvas, self.small_font, text_x, text_y, color, numeral
@@ -1069,10 +1069,10 @@ class ClockDisplay:
             # Calculate angle for this hour (0 = 12 o'clock)
             angle = math.radians(hour * 30 - 90)  # -90 to start at top
 
-            # Calculate tick positions - shorter, cleaner ticks
-            outer_radius = self.clock_radius - 3
-            inner_radius = self.clock_radius - 8
-            
+            # Calculate tick positions - positioned further inside so numerals are closer to ring
+            outer_radius = self.clock_radius - 10
+            inner_radius = self.clock_radius - 15
+
             outer_x = self.center_x + int(outer_radius * math.cos(angle))
             outer_y = self.center_y + int(outer_radius * math.sin(angle))
             inner_x = self.center_x + int(inner_radius * math.cos(angle))
@@ -1096,9 +1096,9 @@ class ClockDisplay:
         second_angle = math.radians((seconds * 6) - 90)
 
         # Hand lengths - better proportions
-        hour_length = self.clock_radius - 25    # Shorter hour hand
-        minute_length = self.clock_radius - 12  # Medium minute hand  
-        second_length = self.clock_radius - 8   # Longest second hand
+        hour_length = self.clock_radius - 25  # Shorter hour hand
+        minute_length = self.clock_radius - 12  # Medium minute hand
+        second_length = self.clock_radius - 8  # Longest second hand
 
         # Calculate hand end points
         hour_x = self.center_x + int(hour_length * math.cos(hour_angle))
@@ -1148,7 +1148,7 @@ class ClockDisplay:
         text_x = self.center_x - text_width // 2
         text_y = self.center_y + self.clock_radius + 24
 
-        # Make sure it fits within bounds  
+        # Make sure it fits within bounds
         if text_y < self.height - 5:
             graphics.DrawText(
                 self.canvas, self.small_font, text_x, text_y, color, date_str
