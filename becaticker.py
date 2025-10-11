@@ -73,9 +73,9 @@ class Config:
             "web_port": 5000,
             "matrix_options": {
                 "rows": 64,
-                "cols": 64, 
+                "cols": 64,
                 "chain_length": 7,  # Total: 2x7 arrangement (14 panels)
-                "parallel": 2,      # 2 rows of 7 panels each
+                "parallel": 2,  # 2 rows of 7 panels each
                 "brightness": 40,
                 "gpio_mapping": "regular",
                 "gpio_slowdown": 4,
@@ -681,17 +681,17 @@ class AnalogClock:
         self.matrix = matrix
         self.config = config
         self.canvas = None  # Will be set by main loop
-        
+
         # Clock occupies rightmost 2 columns (columns 5-6) of 2x7 layout
         # Physical layout: [Text: cols 0-4][Clock: cols 5-6]
         #                  [Text: cols 0-4][Clock: cols 5-6]
         self.clock_offset_x = 320  # Start at column 5 (5 * 64 pixels)
-        self.clock_offset_y = 0    # Starts at top row
-        
-        # Clock configuration - 2x2 panels = 128x128 total area  
+        self.clock_offset_y = 0  # Starts at top row
+
+        # Clock configuration - 2x2 panels = 128x128 total area
         self.clock_width = 128
         self.clock_height = 128
-        self.center_x = self.clock_width // 2   # 64 (center of 128px width)
+        self.center_x = self.clock_width // 2  # 64 (center of 128px width)
         self.center_y = self.clock_height // 2  # 64 (center of 128px height)
 
         # Clock face parameters
@@ -879,11 +879,9 @@ class AnalogClock:
         # Transform clock coordinates (0-127, 0-127) to canvas coordinates
         canvas_x = x + self.clock_offset_x  # Add X offset for clock area
         canvas_y = y + self.clock_offset_y  # Add Y offset (0 for top row)
-        
+
         # Bounds checking
-        if (0 <= x < self.clock_width and 
-            0 <= y < self.clock_height and 
-            self.canvas):
+        if 0 <= x < self.clock_width and 0 <= y < self.clock_height and self.canvas:
             self.canvas.SetPixel(canvas_x, canvas_y, color.red, color.green, color.blue)
 
 
@@ -1073,7 +1071,7 @@ class BecaTicker:
         self.text_display = TextDisplay(
             self.matrix, self.config, self.calendar_manager, row_offset=0
         )
-        
+
         # Analog clock display: Uses columns 5-6 (128x128 area)
         self.analog_clock = AnalogClock(self.matrix, self.config)
 
@@ -1095,12 +1093,12 @@ class BecaTicker:
         options.rows = chain_config.get("rows", 64)
         options.cols = chain_config.get("cols", 64)
         options.chain_length = chain_config.get("chain_length", 7)  # 2x7 total panels
-        options.parallel = chain_config.get("parallel", 2)          # 2 rows of 7 panels each
+        options.parallel = chain_config.get("parallel", 2)  # 2 rows of 7 panels each
         options.brightness = chain_config.get("brightness", 40)
         options.hardware_mapping = chain_config.get("hardware_mapping", "regular")
         options.gpio_slowdown = chain_config.get("gpio_slowdown", 2)
 
-        # Set pixel mapper for 2x7 arrangement  
+        # Set pixel mapper for 2x7 arrangement
         pixel_mapper = chain_config.get("pixel_mapper_config", "")
         if pixel_mapper:
             options.pixel_mapper_config = pixel_mapper
@@ -1110,7 +1108,7 @@ class BecaTicker:
 
         # Additional anti-flickering options for 2x7 setup
         options.limit_refresh_rate_hz = 120  # Limit refresh rate for stability
-        options.show_refresh_rate = False    # Don't show refresh rate counter
+        options.show_refresh_rate = False  # Don't show refresh rate counter
 
         logger.info(
             f"Creating 2x7 matrix layout: Total canvas = {options.chain_length * options.cols}x{options.parallel * options.rows} "
@@ -1439,7 +1437,7 @@ class BecaTicker:
                 # Text display: columns 0-4 (320x128 area)
                 self.text_display.update_display()
 
-                # Analog clock display: columns 5-6 (128x128 area) 
+                # Analog clock display: columns 5-6 (128x128 area)
                 self.analog_clock.update_display()
 
                 # Swap the canvas buffers once for entire 2x7 canvas
