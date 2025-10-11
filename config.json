@@ -18,7 +18,7 @@
     "parallel": 2,
     "brightness": 40,
     "gpio_mapping": "regular",
-    "gpio_slowdown": 2,
+    "gpio_slowdown": 4,
     "hardware_mapping": "regular"
   },
   "display_settings": {

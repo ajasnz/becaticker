@@ -686,13 +686,56 @@ class ClockDisplay:
         # Clock settings
         clock_color = self.config.get("display_settings.clock_color", [0, 255, 0])
         self.clock_color = graphics.Color(*clock_color)
-        self.center_x = 64  # Center of 128x128 display
-        self.center_y = 32 + row_offset  # Adjust center for parallel chain
-        self.radius = 30  # Smaller radius for 64-height constraint
 
-        # Arcade mode
+        # For 2x2 configuration on chain 2 (parallel chain):
+        # Chain 1: 5x1 panels (320x64, rows 0-63)
+        # Chain 2: 4x1 panels arranged as 2x2 (256x64, rows 64-127)
+        # But we want to treat the first 2 panels as top row and next 2 as bottom row
+        # Effective 2x2 area: 128x128 logical pixels mapped to physical panels
+        self.center_x = 64  # Center X of the 128-pixel logical area
+        self.center_y = 32  # Center Y within the 64-pixel chain height
+        self.radius = 28  # Radius that fits in the available area        # Arcade mode
         self.arcade_mode = False
         self.arcade_process = None
+
+    def _map_2x2_coordinates(self, x: int, y: int) -> tuple:
+        """
+        Map coordinates for 2x2 U-mapped panel layout using first 4 panels of chain 2.
+
+        Physical layout on chain 2 (5 panels, but we use first 4 for 2x2):
+        Panel 0 -> Panel 1 -> Panel 2 -> Panel 3 -> Panel 4(unused)
+
+        Logical 2x2 layout (128x128):
+        +-------+-------+
+        | TL    | TR    |  (64x64 each)
+        | P0    | P1    |
+        +-------+-------+
+        | BL    | BR    |
+        | P3    | P2    |  (U-mapping: P0->P1->P2->P3)
+        +-------+-------+
+        """
+        # Determine which quadrant we're in (0-3 for the 4 panels)
+        quad_x = x // 64  # 0=left, 1=right
+        quad_y = y // 64  # 0=top, 1=bottom
+
+        panel_x = x % 64  # X within the 64x64 panel
+        panel_y = y % 64  # Y within the 64x64 panel
+
+        # Map to physical panel positions on chain 2
+        # U-mapping: Top-Left(P0) -> Top-Right(P1) -> Bottom-Right(P2) -> Bottom-Left(P3)
+        if quad_x == 0 and quad_y == 0:  # Top-Left -> Panel 0
+            matrix_x = panel_x
+        elif quad_x == 1 and quad_y == 0:  # Top-Right -> Panel 1
+            matrix_x = 64 + panel_x
+        elif quad_x == 1 and quad_y == 1:  # Bottom-Right -> Panel 2
+            matrix_x = 128 + panel_x
+        elif quad_x == 0 and quad_y == 1:  # Bottom-Left -> Panel 3
+            matrix_x = 192 + panel_x
+        else:
+            matrix_x = x  # Fallback
+
+        matrix_y = self.row_offset + panel_y
+        return matrix_x, matrix_y
 
     def update_display(self) -> None:
         """Update the analog clock display or show arcade mode."""
@@ -716,13 +759,22 @@ class ClockDisplay:
         minute_angle = now.minute * 6 - 90  # 6° per minute
         second_angle = now.second * 6 - 90  # 6° per second
 
-        # Draw hands
-        self._draw_hand(hour_angle, self.radius * 0.5, 3)  # Hour hand
-        self._draw_hand(minute_angle, self.radius * 0.8, 2)  # Minute hand
-        self._draw_hand(second_angle, self.radius * 0.9, 1)  # Second hand
+        # Draw hands with different colors
+        self._draw_hand(
+            hour_angle, self.radius * 0.5, 3, (255, 0, 0)
+        )  # Hour hand - Red
+        self._draw_hand(
+            minute_angle, self.radius * 0.8, 2, (0, 255, 0)
+        )  # Minute hand - Green
+        self._draw_hand(
+            second_angle, self.radius * 0.9, 1, (0, 0, 255)
+        )  # Second hand - Blue
 
         # Draw center dot
-        self.canvas.SetPixel(self.center_x, self.center_y, 255, 255, 255)
+        mapped_x, mapped_y = self._map_2x2_coordinates(
+            self.center_x, self.center_y - self.row_offset
+        )
+        self.canvas.SetPixel(mapped_x, mapped_y, 255, 255, 255)
 
         # Note: Canvas swap is handled by main display loop
 
@@ -791,45 +843,83 @@ class ClockDisplay:
         return True
 
     def _draw_clock_face(self) -> None:
-        """Draw the clock face with hour markers."""
+        """Draw the clock face with Roman numeral hour markers."""
         # Draw outer circle
         for angle in range(360):
             rad = math.radians(angle)
             x = int(self.center_x + self.radius * math.cos(rad))
             y = int(self.center_y + self.radius * math.sin(rad))
-            if (
-                0 <= x < self.canvas.width
-                and self.row_offset <= y < self.row_offset + 64
-            ):
+
+            # Map coordinates for 2x2 U-mapped layout
+            mapped_x, mapped_y = self._map_2x2_coordinates(x, y - self.row_offset)
+
+            if 0 <= mapped_x < self.canvas.width and 0 <= mapped_y < self.canvas.height:
                 self.canvas.SetPixel(
-                    x,
-                    y,
+                    mapped_x,
+                    mapped_y,
                     self.clock_color.red,
                     self.clock_color.green,
                     self.clock_color.blue,
                 )
 
-        # Draw hour markers
+        # Roman numerals for each hour
+        roman_numerals = [
+            "XII",
+            "I",
+            "II",
+            "III",
+            "IV",
+            "V",
+            "VI",
+            "VII",
+            "VIII",
+            "IX",
+            "X",
+            "XI",
+        ]
+
+        # Create small font for Roman numerals
+        font = graphics.Font()
+        font.LoadFont("hzeller/fonts/4x6.bdf")  # Small font for numerals
+
         for hour in range(12):
             angle = hour * 30 - 90  # 30° per hour, starting at 12 o'clock
             rad = math.radians(angle)
 
-            # Inner point of marker
-            x1 = int(self.center_x + (self.radius - 5) * math.cos(rad))
-            y1 = int(self.center_y + (self.radius - 5) * math.sin(rad))
+            # Position for Roman numeral (slightly inside the circle)
+            text_radius = self.radius - 8
+            x = int(self.center_x + text_radius * math.cos(rad))
+            y = int(self.center_y + text_radius * math.sin(rad))
 
-            # Outer point of marker
-            x2 = int(self.center_x + self.radius * math.cos(rad))
-            y2 = int(self.center_y + self.radius * math.sin(rad))
+            # Map coordinates for 2x2 U-mapped layout
+            mapped_x, mapped_y = self._map_2x2_coordinates(x, y - self.row_offset)
 
-            # Draw line for hour marker
-            self._draw_line(x1, y1, x2, y2, 255, 255, 255)
+            # Draw Roman numeral
+            roman_text = roman_numerals[hour]
+            # Center the text by offsetting by approximate character width
+            text_width = len(roman_text) * 2  # Approximate width
+            graphics.DrawText(
+                self.canvas,
+                font,
+                mapped_x - text_width,
+                mapped_y + 2,
+                graphics.Color(255, 255, 255),
+                roman_text,
+            )
 
-    def _draw_hand(self, angle: float, length: float, thickness: int) -> None:
-        """Draw a clock hand."""
+    def _draw_hand(
+        self,
+        angle: float,
+        length: float,
+        thickness: int,
+        color: tuple = (255, 255, 255),
+    ) -> None:
+        """Draw a clock hand with specified color."""
         rad = math.radians(angle)
         end_x = int(self.center_x + length * math.cos(rad))
         end_y = int(self.center_y + length * math.sin(rad))
+
+        r, g, b = color
 
         # Draw hand with thickness
         for t in range(-thickness, thickness + 1):
@@ -840,9 +930,9 @@ class ClockDisplay:
                         self.center_y + t2,
                         end_x + t,
                         end_y + t2,
-                        255,
-                        255,
-                        255,
+                        r,
+                        g,
+                        b,
                     )
 
     def _draw_line(
@@ -856,11 +946,11 @@ class ClockDisplay:
         err = dx - dy
 
         while True:
-            if (
-                0 <= x1 < self.canvas.width
-                and self.row_offset <= y1 < self.row_offset + 64
-            ):
-                self.canvas.SetPixel(x1, y1, r, g, b)
+            # Map coordinates for 2x2 U-mapped layout
+            mapped_x, mapped_y = self._map_2x2_coordinates(x1, y1 - self.row_offset)
+
+            if 0 <= mapped_x < self.canvas.width and 0 <= mapped_y < self.canvas.height:
+                self.canvas.SetPixel(mapped_x, mapped_y, r, g, b)
 
             if x1 == x2 and y1 == y2:
                 break
@@ -1086,6 +1176,7 @@ class BecaTicker:
         options.brightness = chain_config.get("brightness", 40)
         options.hardware_mapping = chain_config.get("hardware_mapping", "regular")
         options.gpio_slowdown = chain_config.get("gpio_slowdown", 2)
+        # Note: pixel_mapper not used as we handle U-mapping manually for chain 2
         options.drop_privileges = False
         options.disable_hardware_pulsing = True
 
