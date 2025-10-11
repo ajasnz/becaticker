@@ -19,7 +19,8 @@
     "brightness": 40,
     "gpio_mapping": "regular",
     "gpio_slowdown": 4,
-    "hardware_mapping": "regular"
+    "hardware_mapping": "regular",
+    "pixel_mapper_config": "U-mapper;Rotate:180"
   },
   "display_settings": {
     "text_color": [
@@ -39,6 +40,14 @@
     ],
     "scroll_speed": 0.5,
     "calendar_refresh_minutes": 30
+  },
+  "clock_settings": {
+    "face_color": [64, 64, 64],
+    "hour_hand_color": [255, 255, 255],
+    "minute_hand_color": [255, 255, 0],
+    "second_hand_color": [255, 0, 0],
+    "number_color": [0, 255, 255],
+    "tick_color": [128, 128, 128]
   },
   "arcade_mode": {
     "enabled": "True",

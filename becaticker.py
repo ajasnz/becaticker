@@ -734,6 +734,19 @@ class AnalogClock:
             f"AnalogClock: Drawing clock at {hours:02d}:{minutes:02d}:{seconds:02d}, center=({self.center_x},{self.center_y}), offset={self.row_offset}"
         )
 
+        # Simple test: fill corner squares to verify the clock area is working
+        test_color = graphics.Color(255, 0, 255)  # Bright magenta for visibility
+        corners = [(0, 0), (0, 127), (127, 0), (127, 127)]  # Four corners
+        for corner_x, corner_y in corners:
+            for dx in range(8):
+                for dy in range(8):
+                    self._set_pixel(corner_x + dx, corner_y + dy, test_color)
+        
+        # Center square
+        for test_x in range(60, 68):  # 8x8 square near center
+            for test_y in range(60, 68):
+                self._set_pixel(test_x, test_y, test_color)
+
         # Calculate angles (0 degrees = 12 o'clock, clockwise)
         # Subtract 90 degrees to start from 12 o'clock instead of 3 o'clock
         hour_angle = ((hours * 30) + (minutes * 0.5) - 90) * 3.14159 / 180
@@ -883,7 +896,9 @@ class AnalogClock:
         if 0 <= x < self.clock_width and 0 <= y < self.clock_height and self.canvas:
             self.canvas.SetPixel(x, y_offset, color.red, color.green, color.blue)
         elif self.canvas:
-            logger.debug(f"AnalogClock: Pixel out of bounds: ({x},{y}) -> ({x},{y_offset}), bounds: {self.clock_width}x{self.clock_height}")
+            logger.debug(
+                f"AnalogClock: Pixel out of bounds: ({x},{y}) -> ({x},{y_offset}), bounds: {self.clock_width}x{self.clock_height}"
+            )
 
 
 class UserManager:
