@@ -805,6 +805,201 @@
                 <button class="btn btn-secondary" onclick="addDisplayLine()">+ Add Line</button>
             </div>
 
+            <!-- Clock Customization -->
+            <div class="section">
+                <h2>🕐 Clock Customization</h2>
+
+                <!-- Clock Style -->
+                <h3>Clock Style</h3>
+                <div class="form-group">
+                    <label for="clock-style">Overall Style:</label>
+                    <select id="clock-style" onchange="updateClockSettings()">
+                        <option value="classic">Classic</option>
+                        <option value="modern" selected>Modern</option>
+                        <option value="minimal">Minimal</option>
+                        <option value="digital">Digital Only</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="face-style">Face Style:</label>
+                    <select id="face-style" onchange="updateClockSettings()">
+                        <option value="circle" selected>Circle</option>
+                        <option value="rounded_square">Rounded Square</option>
+                        <option value="square">Square</option>
+                        <option value="none">None</option>
+                    </select>
+                </div>
+
+                <!-- Face Colors -->
+                <h3>Face Colors</h3>
+                <div class="color-grid">
+                    <div class="color-control">
+                        <label>Face:</label>
+                        <input type="color" id="face-color" value="#202030" onchange="updateClockColors()">
+                        <input type="text" id="face-color-hex" value="#202030" onchange="updateClockColorsFromHex()"
+                            maxlength="7">
+                    </div>
+                    <div class="color-control">
+                        <label>Face Outline:</label>
+                        <input type="color" id="face-outline-color" value="#4080ff" onchange="updateClockColors()">
+                        <input type="text" id="face-outline-color-hex" value="#4080ff"
+                            onchange="updateClockColorsFromHex()" maxlength="7">
+                    </div>
+                </div>
+
+                <!-- Hand Settings -->
+                <h3>Clock Hands</h3>
+                <div class="form-group">
+                    <label for="hand-style">Hand Style:</label>
+                    <select id="hand-style" onchange="updateClockSettings()">
+                        <option value="classic">Classic</option>
+                        <option value="modern" selected>Modern (Tapered)</option>
+                        <option value="arrow">Arrow</option>
+                        <option value="diamond">Diamond</option>
+                    </select>
+                </div>
+
+                <div class="color-grid">
+                    <div class="color-control">
+                        <label>Hour Hand:</label>
+                        <input type="color" id="hour-hand-color" value="#ffffff" onchange="updateClockColors()">
+                        <input type="text" id="hour-hand-color-hex" value="#ffffff"
+                            onchange="updateClockColorsFromHex()" maxlength="7">
+                    </div>
+                    <div class="color-control">
+                        <label>Minute Hand:</label>
+                        <input type="color" id="minute-hand-color" value="#40c0ff" onchange="updateClockColors()">
+                        <input type="text" id="minute-hand-color-hex" value="#40c0ff"
+                            onchange="updateClockColorsFromHex()" maxlength="7">
+                    </div>
+                    <div class="color-control">
+                        <label>Second Hand:</label>
+                        <input type="color" id="second-hand-color" value="#ff4040" onchange="updateClockColors()">
+                        <input type="text" id="second-hand-color-hex" value="#ff4040"
+                            onchange="updateClockColorsFromHex()" maxlength="7">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="hand-shadows" onchange="updateClockSettings()" checked>
+                        Show Hand Shadows
+                    </label>
+                </div>
+
+                <!-- Hour Markers -->
+                <h3>Hour Markers</h3>
+                <div class="form-group">
+                    <label for="marker-style">Marker Style:</label>
+                    <select id="marker-style" onchange="updateClockSettings()">
+                        <option value="ticks">Ticks</option>
+                        <option value="dots" selected>Dots</option>
+                        <option value="squares">Squares</option>
+                        <option value="diamonds">Diamonds</option>
+                        <option value="numbers">Numbers</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="marker-positions">Marker Positions:</label>
+                    <select id="marker-positions" onchange="updateClockSettings()">
+                        <option value="all" selected>All 12 Hours</option>
+                        <option value="cardinal">Cardinal (4 positions)</option>
+                        <option value="major">Major (8 positions)</option>
+                    </select>
+                </div>
+
+                <div class="color-grid">
+                    <div class="color-control">
+                        <label>Markers:</label>
+                        <input type="color" id="marker-color" value="#80b4ff" onchange="updateClockColors()">
+                        <input type="text" id="marker-color-hex" value="#80b4ff" onchange="updateClockColorsFromHex()"
+                            maxlength="7">
+                    </div>
+                    <div class="color-control">
+                        <label>Major Markers:</label>
+                        <input type="color" id="major-marker-color" value="#c8dcff" onchange="updateClockColors()">
+                        <input type="text" id="major-marker-color-hex" value="#c8dcff"
+                            onchange="updateClockColorsFromHex()" maxlength="7">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="show-numbers" onchange="updateClockSettings()">
+                        Show Hour Numbers
+                    </label>
+                </div>
+
+                <!-- Center Dot -->
+                <h3>Center Dot</h3>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="center-dot" onchange="updateClockSettings()" checked>
+                        Show Center Dot
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label for="center-dot-size">Center Dot Size:</label>
+                    <input type="range" id="center-dot-size" min="1" max="5" value="3" onchange="updateClockSettings()">
+                    <span id="center-dot-size-value">3</span>
+                </div>
+
+                <!-- Digital Display -->
+                <h3>Digital Display</h3>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="show-digital" onchange="updateClockSettings()" checked>
+                        Show Digital Time
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label for="digital-style">Digital Style:</label>
+                    <select id="digital-style" onchange="updateClockSettings()">
+                        <option value="classic">Classic</option>
+                        <option value="modern" selected>Modern</option>
+                        <option value="segment">7-Segment</option>
+                    </select>
+                </div>
+
+                <!-- Date Display -->
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="show-date" onchange="updateClockSettings()" checked>
+                        Show Date
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label for="date-format">Date Format:</label>
+                    <select id="date-format" onchange="updateClockSettings()">
+                        <option value="%Y-%m-%d" selected>2025-01-15</option>
+                        <option value="%m/%d/%Y">01/15/2025</option>
+                        <option value="%d/%m/%Y">15/01/2025</option>
+                        <option value="%B %d, %Y">January 15, 2025</option>
+                        <option value="%d %b %Y">15 Jan 2025</option>
+                    </select>
+                </div>
+
+                <!-- Advanced Options -->
+                <h3>Advanced Options</h3>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="smooth-seconds" onchange="updateClockSettings()" checked>
+                        Smooth Second Hand Movement
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="glow-effect" onchange="updateClockSettings()">
+                        Glow Effect
+                    </label>
+                </div>
+
+                <button class="btn" onclick="saveClockSettings()">Apply Clock Settings</button>
+                <button class="btn btn-secondary" onclick="resetClockToDefaults()">Reset to Defaults</button>
+            </div>
+
             <!-- System Controls -->
             <div class="section">
                 <h2>System Controls</h2>
@@ -901,6 +1096,9 @@
 
                 // Load display lines configuration
                 loadDisplayLines();
+
+                // Load clock settings
+                loadClockSettings();
 
                 // Load messages and calendars
                 loadMessages();
@@ -1815,10 +2013,265 @@
             }
         }
 
+        // Clock Customization Functions
+        function loadClockSettings() {
+            const clockSettings = currentConfig.second_display?.settings || {};
+
+            // Load clock style settings
+            document.getElementById('clock-style').value = clockSettings.clock_style || 'modern';
+            document.getElementById('face-style').value = clockSettings.face_style || 'circle';
+            document.getElementById('hand-style').value = clockSettings.hand_style || 'modern';
+            document.getElementById('marker-style').value = clockSettings.marker_style || 'dots';
+            document.getElementById('marker-positions').value = clockSettings.marker_positions || 'all';
+            document.getElementById('digital-style').value = clockSettings.digital_style || 'modern';
+            document.getElementById('date-format').value = clockSettings.date_format || '%Y-%m-%d';
+
+            // Load clock colors
+            const faceColor = clockSettings.face_color || [32, 32, 48];
+            const faceOutlineColor = clockSettings.face_outline_color || [64, 128, 255];
+            const hourHandColor = clockSettings.hour_hand_color || [255, 255, 255];
+            const minuteHandColor = clockSettings.minute_hand_color || [64, 192, 255];
+            const secondHandColor = clockSettings.second_hand_color || [255, 64, 64];
+            const markerColor = clockSettings.marker_color || [128, 180, 255];
+            const majorMarkerColor = clockSettings.major_marker_color || [200, 220, 255];
+
+            document.getElementById('face-color').value = rgbToHex(...faceColor);
+            document.getElementById('face-color-hex').value = rgbToHex(...faceColor);
+            document.getElementById('face-outline-color').value = rgbToHex(...faceOutlineColor);
+            document.getElementById('face-outline-color-hex').value = rgbToHex(...faceOutlineColor);
+            document.getElementById('hour-hand-color').value = rgbToHex(...hourHandColor);
+            document.getElementById('hour-hand-color-hex').value = rgbToHex(...hourHandColor);
+            document.getElementById('minute-hand-color').value = rgbToHex(...minuteHandColor);
+            document.getElementById('minute-hand-color-hex').value = rgbToHex(...minuteHandColor);
+            document.getElementById('second-hand-color').value = rgbToHex(...secondHandColor);
+            document.getElementById('second-hand-color-hex').value = rgbToHex(...secondHandColor);
+            document.getElementById('marker-color').value = rgbToHex(...markerColor);
+            document.getElementById('marker-color-hex').value = rgbToHex(...markerColor);
+            document.getElementById('major-marker-color').value = rgbToHex(...majorMarkerColor);
+            document.getElementById('major-marker-color-hex').value = rgbToHex(...majorMarkerColor);
+
+            // Load checkboxes
+            document.getElementById('hand-shadows').checked = clockSettings.hand_shadows !== false;
+            document.getElementById('show-numbers').checked = clockSettings.show_numbers === true;
+            document.getElementById('center-dot').checked = clockSettings.center_dot !== false;
+            document.getElementById('show-digital').checked = clockSettings.show_digital !== false;
+            document.getElementById('show-date').checked = clockSettings.show_date !== false;
+            document.getElementById('smooth-seconds').checked = clockSettings.smooth_seconds !== false;
+            document.getElementById('glow-effect').checked = clockSettings.glow_effect === true;
+
+            // Load range inputs
+            document.getElementById('center-dot-size').value = clockSettings.center_dot_size || 3;
+            document.getElementById('center-dot-size-value').textContent = clockSettings.center_dot_size || 3;
+        }
+
+        function updateClockSettings() {
+            // Update range value displays
+            const centerDotSize = document.getElementById('center-dot-size');
+            const centerDotSizeValue = document.getElementById('center-dot-size-value');
+            if (centerDotSize && centerDotSizeValue) {
+                centerDotSizeValue.textContent = centerDotSize.value;
+            }
+
+            // Auto-save after a short delay
+            clearTimeout(window.clockSettingsTimer);
+            window.clockSettingsTimer = setTimeout(saveClockSettings, 500);
+        }
+
+        let clockColorUpdateTimer;
+        function updateClockColorsFromHex() {
+            // Update color pickers from hex text inputs
+            const colorInputs = [
+                ['face-color', 'face-color-hex'],
+                ['face-outline-color', 'face-outline-color-hex'],
+                ['hour-hand-color', 'hour-hand-color-hex'],
+                ['minute-hand-color', 'minute-hand-color-hex'],
+                ['second-hand-color', 'second-hand-color-hex'],
+                ['marker-color', 'marker-color-hex'],
+                ['major-marker-color', 'major-marker-color-hex']
+            ];
+
+            colorInputs.forEach(([colorId, hexId]) => {
+                const colorInput = document.getElementById(colorId);
+                const hexInput = document.getElementById(hexId);
+                if (colorInput && hexInput && hexInput.value.match(/^#[0-9A-Fa-f]{6}$/)) {
+                    colorInput.value = hexInput.value;
+                }
+            });
+
+            updateClockColors();
+        }
+
+        function updateClockColors() {
+            // Clear any existing timer
+            if (clockColorUpdateTimer) {
+                clearTimeout(clockColorUpdateTimer);
+            }
+
+            // Update hex text fields to match color pickers
+            const colorInputs = [
+                ['face-color', 'face-color-hex'],
+                ['face-outline-color', 'face-outline-color-hex'],
+                ['hour-hand-color', 'hour-hand-color-hex'],
+                ['minute-hand-color', 'minute-hand-color-hex'],
+                ['second-hand-color', 'second-hand-color-hex'],
+                ['marker-color', 'marker-color-hex'],
+                ['major-marker-color', 'major-marker-color-hex']
+            ];
+
+            colorInputs.forEach(([colorId, hexId]) => {
+                const colorInput = document.getElementById(colorId);
+                const hexInput = document.getElementById(hexId);
+                if (colorInput && hexInput) {
+                    hexInput.value = colorInput.value;
+                }
+            });
+
+            // Save with a small delay to avoid rapid saves while dragging
+            clockColorUpdateTimer = setTimeout(() => {
+                saveClockSettings();
+            }, 500);
+        }
+
+        async function saveClockSettings() {
+            try {
+                // Gather all clock settings
+                const clockSettings = {
+                    // Style settings
+                    clock_style: document.getElementById('clock-style').value,
+                    face_style: document.getElementById('face-style').value,
+                    hand_style: document.getElementById('hand-style').value,
+                    marker_style: document.getElementById('marker-style').value,
+                    marker_positions: document.getElementById('marker-positions').value,
+                    digital_style: document.getElementById('digital-style').value,
+                    date_format: document.getElementById('date-format').value,
+
+                    // Colors
+                    face_color: hexToRgb(document.getElementById('face-color').value),
+                    face_outline_color: hexToRgb(document.getElementById('face-outline-color').value),
+                    hour_hand_color: hexToRgb(document.getElementById('hour-hand-color').value),
+                    minute_hand_color: hexToRgb(document.getElementById('minute-hand-color').value),
+                    second_hand_color: hexToRgb(document.getElementById('second-hand-color').value),
+                    marker_color: hexToRgb(document.getElementById('marker-color').value),
+                    major_marker_color: hexToRgb(document.getElementById('major-marker-color').value),
+
+                    // Boolean options
+                    hand_shadows: document.getElementById('hand-shadows').checked,
+                    show_numbers: document.getElementById('show-numbers').checked,
+                    center_dot: document.getElementById('center-dot').checked,
+                    show_digital: document.getElementById('show-digital').checked,
+                    show_date: document.getElementById('show-date').checked,
+                    smooth_seconds: document.getElementById('smooth-seconds').checked,
+                    glow_effect: document.getElementById('glow-effect').checked,
+
+                    // Numeric settings
+                    center_dot_size: parseInt(document.getElementById('center-dot-size').value),
+
+                    // Keep existing settings that aren't in the UI
+                    face_outline: true,
+                    face_thickness: 2,
+                    hand_shadow_color: [16, 16, 16],
+                    center_dot_color: hexToRgb(document.getElementById('hour-hand-color').value), // Use hour hand color
+                    digital_color: [255, 255, 255],
+                    digital_background: false,
+                    digital_background_color: [0, 0, 0],
+                    date_color: hexToRgb(document.getElementById('marker-color').value), // Use marker color
+                    fade_old_position: true
+                };
+
+                // Build the complete configuration update
+                const settings = {
+                    second_display: {
+                        ...currentConfig.second_display,
+                        settings: {
+                            ...currentConfig.second_display?.settings,
+                            ...clockSettings
+                        }
+                    }
+                };
+
+                const response = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(settings)
+                });
+
+                if (!response.ok) throw new Error('Failed to save clock configuration');
+
+                const result = await response.json();
+                showAlert('Clock settings saved successfully!');
+
+                // Update currentConfig
+                if (!currentConfig.second_display) {
+                    currentConfig.second_display = {};
+                }
+                if (!currentConfig.second_display.settings) {
+                    currentConfig.second_display.settings = {};
+                }
+                currentConfig.second_display.settings = {
+                    ...currentConfig.second_display.settings,
+                    ...clockSettings
+                };
+
+            } catch (error) {
+                console.error('Error saving clock settings:', error);
+                showAlert('Failed to save clock settings: ' + error.message, 'error');
+            }
+        }
+
+        function resetClockToDefaults() {
+            if (!confirm('Are you sure you want to reset all clock settings to defaults?')) {
+                return;
+            }
+
+            // Reset to default values
+            document.getElementById('clock-style').value = 'modern';
+            document.getElementById('face-style').value = 'circle';
+            document.getElementById('hand-style').value = 'modern';
+            document.getElementById('marker-style').value = 'dots';
+            document.getElementById('marker-positions').value = 'all';
+            document.getElementById('digital-style').value = 'modern';
+            document.getElementById('date-format').value = '%Y-%m-%d';
+
+            // Reset colors
+            document.getElementById('face-color').value = '#202030';
+            document.getElementById('face-color-hex').value = '#202030';
+            document.getElementById('face-outline-color').value = '#4080ff';
+            document.getElementById('face-outline-color-hex').value = '#4080ff';
+            document.getElementById('hour-hand-color').value = '#ffffff';
+            document.getElementById('hour-hand-color-hex').value = '#ffffff';
+            document.getElementById('minute-hand-color').value = '#40c0ff';
+            document.getElementById('minute-hand-color-hex').value = '#40c0ff';
+            document.getElementById('second-hand-color').value = '#ff4040';
+            document.getElementById('second-hand-color-hex').value = '#ff4040';
+            document.getElementById('marker-color').value = '#80b4ff';
+            document.getElementById('marker-color-hex').value = '#80b4ff';
+            document.getElementById('major-marker-color').value = '#c8dcff';
+            document.getElementById('major-marker-color-hex').value = '#c8dcff';
+
+            // Reset checkboxes
+            document.getElementById('hand-shadows').checked = true;
+            document.getElementById('show-numbers').checked = false;
+            document.getElementById('center-dot').checked = true;
+            document.getElementById('show-digital').checked = true;
+            document.getElementById('show-date').checked = true;
+            document.getElementById('smooth-seconds').checked = true;
+            document.getElementById('glow-effect').checked = false;
+
+            // Reset ranges
+            document.getElementById('center-dot-size').value = 3;
+            document.getElementById('center-dot-size-value').textContent = 3;
+
+            saveClockSettings();
+        }
+
         // Initialize user role check when page loads
         document.addEventListener('DOMContentLoaded', function () {
             // Add a small delay to ensure other initialization is complete
             setTimeout(checkUserRole, 500);
+            // Load clock settings after main config loads
+            setTimeout(loadClockSettings, 1000);
         });
     </script>
 </body>

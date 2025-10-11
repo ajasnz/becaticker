@@ -91,16 +91,46 @@ class Config:
                 "layout": "2x2",
                 "chain": 2,
                 "settings": {
-                    "face_color": [64, 64, 64],
+                    # Clock style options
+                    "clock_style": "modern",  # "classic", "modern", "minimal", "digital"
+                    "face_style": "circle",  # "circle", "rounded_square", "square", "none"
+                    "face_color": [32, 32, 48],  # Darker modern blue-gray
+                    "face_outline": True,
+                    "face_outline_color": [64, 128, 255],  # Modern blue accent
+                    "face_thickness": 2,
+                    # Hand styling
+                    "hand_style": "modern",  # "classic", "modern", "arrow", "diamond"
                     "hour_hand_color": [255, 255, 255],
-                    "minute_hand_color": [255, 255, 0],
-                    "second_hand_color": [255, 0, 0],
-                    "number_color": [0, 255, 255],
-                    "tick_color": [128, 128, 128],
+                    "minute_hand_color": [64, 192, 255],  # Modern blue
+                    "second_hand_color": [255, 64, 64],  # Modern red
+                    "hand_shadows": True,
+                    "hand_shadow_color": [16, 16, 16],
+                    # Hour markers
+                    "marker_style": "dots",  # "ticks", "dots", "squares", "diamonds", "numbers"
+                    "marker_positions": "all",  # "all" (12), "cardinal" (4), "major" (8)
+                    "marker_color": [128, 180, 255],  # Light blue
+                    "major_marker_color": [200, 220, 255],  # Lighter for 12, 3, 6, 9
+                    "show_numbers": False,
+                    "number_style": "modern",  # "roman", "arabic", "modern"
+                    "number_color": [200, 220, 255],
+                    # Center dot
+                    "center_dot": True,
+                    "center_dot_color": [255, 255, 255],
+                    "center_dot_size": 3,
+                    # Digital time display
                     "show_digital": True,
+                    "digital_style": "modern",  # "classic", "modern", "segment"
                     "digital_color": [255, 255, 255],
+                    "digital_background": False,
+                    "digital_background_color": [0, 0, 0],
+                    # Date display
                     "show_date": True,
-                    "date_color": [0, 255, 255],
+                    "date_color": [128, 180, 255],
+                    "date_format": "%Y-%m-%d",  # Customizable date format
+                    # Animation and effects
+                    "smooth_seconds": True,  # Smooth second hand movement
+                    "glow_effect": False,  # Subtle glow around hands
+                    "fade_old_position": True,  # Fade effect when hands move
                 },
             },
             "clock_settings": {
@@ -859,22 +889,49 @@ class ClockDisplay:
         clock_config = self.config.get("second_display.settings", {})
 
         return {
-            "face": graphics.Color(*clock_config.get("face_color", [64, 64, 64])),
+            # Face colors
+            "face": graphics.Color(*clock_config.get("face_color", [32, 32, 48])),
+            "face_outline": graphics.Color(
+                *clock_config.get("face_outline_color", [64, 128, 255])
+            ),
+            # Hand colors
             "hour_hand": graphics.Color(
                 *clock_config.get("hour_hand_color", [255, 255, 255])
             ),
             "minute_hand": graphics.Color(
-                *clock_config.get("minute_hand_color", [255, 255, 0])
+                *clock_config.get("minute_hand_color", [64, 192, 255])
             ),
             "second_hand": graphics.Color(
-                *clock_config.get("second_hand_color", [255, 0, 0])
+                *clock_config.get("second_hand_color", [255, 64, 64])
             ),
-            "numbers": graphics.Color(*clock_config.get("number_color", [0, 255, 255])),
-            "ticks": graphics.Color(*clock_config.get("tick_color", [128, 128, 128])),
+            "hand_shadow": graphics.Color(
+                *clock_config.get("hand_shadow_color", [16, 16, 16])
+            ),
+            # Marker colors
+            "markers": graphics.Color(
+                *clock_config.get("marker_color", [128, 180, 255])
+            ),
+            "major_markers": graphics.Color(
+                *clock_config.get("major_marker_color", [200, 220, 255])
+            ),
+            "numbers": graphics.Color(
+                *clock_config.get("number_color", [200, 220, 255])
+            ),
+            # Center dot
+            "center_dot": graphics.Color(
+                *clock_config.get("center_dot_color", [255, 255, 255])
+            ),
+            # Digital display
             "digital": graphics.Color(
                 *clock_config.get("digital_color", [255, 255, 255])
             ),
-            "date": graphics.Color(*clock_config.get("date_color", [0, 255, 255])),
+            "digital_bg": graphics.Color(
+                *clock_config.get("digital_background_color", [0, 0, 0])
+            ),
+            # Date display
+            "date": graphics.Color(*clock_config.get("date_color", [128, 180, 255])),
+            # Legacy compatibility
+            "ticks": graphics.Color(*clock_config.get("tick_color", [128, 128, 128])),
         }
 
     def update_display(self) -> None:
@@ -901,29 +958,32 @@ class ClockDisplay:
             self._draw_analog_clock(colors, now)
 
     def _draw_analog_clock(self, colors: dict, now: datetime) -> None:
-        """Draw the complete analog clock with all elements."""
-        # Clear the clock area first (optional, but helps with clean rendering)
+        """Draw the complete modern analog clock with all elements."""
+        config = self.config.get("second_display.settings", {})
 
         # Draw elements in order from back to front
-        # 1. Draw the outer circle/ring of the clock face
-        self._draw_clock_face(colors["face"])
 
-        # 2. Draw hour tick marks at all 12 positions
-        self._draw_hour_ticks(colors["ticks"])
+        # 1. Draw the clock face (circle, square, etc.)
+        self._draw_clock_face(colors)
 
-        # 3. Draw clock hands (hour, minute, second)
-        self._draw_clock_hands(colors, now)
+        # 2. Draw hour markers (dots, ticks, squares, etc.)
+        self._draw_hour_markers(colors)
 
-        # 5. Draw center dot on top of hands
-        self._draw_center_point(colors["hour_hand"], radius=2)
+        # 3. Draw clock hands with modern styling
+        self._draw_modern_clock_hands(colors, now)
 
-        # 6. Draw digital time below the clock if enabled
-        if self.config.get("second_display.settings.show_digital", True):
-            self._draw_digital_time(colors["digital"], now)
+        # 4. Draw center dot if enabled
+        if config.get("center_dot", True):
+            center_size = config.get("center_dot_size", 3)
+            self._draw_center_point(colors["center_dot"], radius=center_size)
 
-        # 7. Draw date below digital time if enabled
-        if self.config.get("second_display.settings.show_date", True):
-            self._draw_date(colors["date"], now)
+        # 5. Draw digital time below the clock if enabled
+        if config.get("show_digital", True):
+            self._draw_modern_digital_time(colors, now)
+
+        # 6. Draw date below digital time if enabled
+        if config.get("show_date", True):
+            self._draw_modern_date(colors, now)
 
     def _draw_test_pattern(self, colors: dict) -> None:
         """Draw colored bars spanning full width to test coordinate mapping."""
@@ -1084,12 +1144,138 @@ class ClockDisplay:
         """Draw a center point (dot) at the center of the clock."""
         self._draw_circle(self.center_x, self.center_y, radius, color, fill=True)
 
-    def _draw_clock_face(self, color: graphics.Color) -> None:
-        """Draw the outer circle of the analog clock face."""
-        # Draw the main clock circle outline
-        self._draw_circle(
-            self.center_x, self.center_y, self.clock_radius, color, fill=False
+    def _draw_clock_face(self, colors: dict) -> None:
+        """Draw the clock face with modern styling options."""
+        config = self.config.get("second_display.settings", {})
+        face_style = config.get("face_style", "circle")
+        face_color = colors.get("face", graphics.Color(32, 32, 48))
+        outline_color = colors.get("face_outline", graphics.Color(64, 128, 255))
+
+        if face_style == "none":
+            return
+
+        if face_style == "circle":
+            # Modern circle with better anti-aliasing effect
+            self._draw_modern_circle(face_color, outline_color)
+        elif face_style == "rounded_square":
+            self._draw_rounded_square(face_color, outline_color)
+        elif face_style == "square":
+            self._draw_square_face(face_color, outline_color)
+
+    def _draw_modern_circle(
+        self, face_color: graphics.Color, outline_color: graphics.Color
+    ) -> None:
+        """Draw a modern circle with improved rendering to reduce straight segments."""
+        # Draw multiple concentric circles with varying opacity to create smoother appearance
+        config = self.config.get("second_display.settings", {})
+        thickness = config.get("face_thickness", 2)
+        show_outline = config.get("face_outline", True)
+
+        if show_outline:
+            # Draw thicker outline for modern look
+            for i in range(thickness):
+                self._draw_circle(
+                    self.center_x,
+                    self.center_y,
+                    self.clock_radius - i,
+                    outline_color,
+                    fill=False,
+                )
+
+        # Optional: Add subtle inner glow effect
+        if config.get("glow_effect", False):
+            glow_color = graphics.Color(
+                min(255, outline_color.red + 32),
+                min(255, outline_color.green + 32),
+                min(255, outline_color.blue + 32),
+            )
+            self._draw_circle(
+                self.center_x,
+                self.center_y,
+                self.clock_radius - thickness - 1,
+                glow_color,
+                fill=False,
+            )
+
+    def _draw_rounded_square(
+        self, face_color: graphics.Color, outline_color: graphics.Color
+    ) -> None:
+        """Draw a rounded square clock face."""
+        config = self.config.get("second_display.settings", {})
+        thickness = config.get("face_thickness", 2)
+        corner_radius = min(12, self.clock_radius // 5)  # Responsive corner radius
+
+        # Draw rounded rectangle outline
+        self._draw_rounded_rectangle(
+            self.center_x - self.clock_radius + 10,
+            self.center_y - self.clock_radius + 10,
+            self.center_x + self.clock_radius - 10,
+            self.center_y + self.clock_radius - 10,
+            corner_radius,
+            outline_color,
+            thickness,
         )
+
+    def _draw_square_face(
+        self, face_color: graphics.Color, outline_color: graphics.Color
+    ) -> None:
+        """Draw a square clock face."""
+        config = self.config.get("second_display.settings", {})
+        thickness = config.get("face_thickness", 2)
+
+        # Draw square outline
+        size = self.clock_radius - 10
+        for i in range(thickness):
+            self._draw_rectangle(
+                self.center_x - size + i,
+                self.center_y - size + i,
+                self.center_x + size - i,
+                self.center_y + size - i,
+                outline_color,
+            )
+
+    def _draw_rounded_rectangle(
+        self,
+        x1: int,
+        y1: int,
+        x2: int,
+        y2: int,
+        radius: int,
+        color: graphics.Color,
+        thickness: int = 1,
+    ) -> None:
+        """Draw a rounded rectangle outline."""
+        # Draw the four sides
+        for t in range(thickness):
+            # Top and bottom sides
+            self._draw_line(x1 + radius, y1 + t, x2 - radius, y1 + t, color)
+            self._draw_line(x1 + radius, y2 - t, x2 - radius, y2 - t, color)
+
+            # Left and right sides
+            self._draw_line(x1 + t, y1 + radius, x1 + t, y2 - radius, color)
+            self._draw_line(x2 - t, y1 + radius, x2 - t, y2 - radius, color)
+
+        # Draw corner arcs (simplified as small circles)
+        corners = [
+            (x1 + radius, y1 + radius),  # Top-left
+            (x2 - radius, y1 + radius),  # Top-right
+            (x1 + radius, y2 - radius),  # Bottom-left
+            (x2 - radius, y2 - radius),  # Bottom-right
+        ]
+
+        for cx, cy in corners:
+            self._draw_circle(cx, cy, radius, color, fill=False)
+
+    def _draw_rectangle(
+        self, x1: int, y1: int, x2: int, y2: int, color: graphics.Color
+    ) -> None:
+        """Draw a rectangle outline."""
+        # Top and bottom
+        self._draw_line(x1, y1, x2, y1, color)
+        self._draw_line(x1, y2, x2, y2, color)
+        # Left and right
+        self._draw_line(x1, y1, x1, y2, color)
+        self._draw_line(x2, y1, x2, y2, color)
 
     def _draw_roman_numerals(self, color: graphics.Color) -> None:
         """Draw Roman numerals at 12, 3, 6, 9 positions inside the clock face."""
@@ -1136,47 +1322,221 @@ class ClockDisplay:
                 self.canvas, self.small_font, text_x, text_y, color, numeral
             )
 
-    def _draw_hour_ticks(self, color: graphics.Color) -> None:
-        """Draw tick marks at all 12 hour positions."""
+    def _draw_hour_markers(self, colors: dict) -> None:
+        """Draw modern hour markers with various styles."""
         import math
 
-        for hour in range(12):
+        config = self.config.get("second_display.settings", {})
+        marker_style = config.get("marker_style", "dots")
+        marker_positions = config.get("marker_positions", "all")
+        marker_color = colors.get("markers", graphics.Color(128, 180, 255))
+        major_marker_color = colors.get("major_markers", graphics.Color(200, 220, 255))
+
+        # Determine which positions to draw
+        if marker_positions == "cardinal":
+            positions = [0, 3, 6, 9]  # 12, 3, 6, 9 o'clock
+        elif marker_positions == "major":
+            positions = [0, 1, 3, 4, 6, 7, 9, 10]  # Every other hour
+        else:  # "all"
+            positions = list(range(12))
+
+        for hour in positions:
             # Calculate angle for this hour (0° = 12 o'clock, clockwise)
             angle_deg = hour * 30  # 30 degrees per hour
             angle_rad = math.radians(angle_deg - 90)  # -90 to start at top
 
-            # Uniform tick marks since we no longer have numerals
+            # Determine if this is a major position (12, 3, 6, 9)
+            is_major = hour in [0, 3, 6, 9]
+            current_color = major_marker_color if is_major else marker_color
+
+            if marker_style == "dots":
+                self._draw_marker_dot(angle_rad, current_color, is_major)
+            elif marker_style == "squares":
+                self._draw_marker_square(angle_rad, current_color, is_major)
+            elif marker_style == "diamonds":
+                self._draw_marker_diamond(angle_rad, current_color, is_major)
+            elif marker_style == "numbers":
+                self._draw_marker_number(angle_rad, hour, current_color, is_major)
+            else:  # "ticks" - improved version
+                self._draw_marker_tick(angle_rad, current_color, is_major)
+
+        # Draw numbers if enabled separately from markers
+        if config.get("show_numbers", False):
+            self._draw_hour_numbers(colors)
+
+    def _draw_marker_dot(
+        self, angle_rad: float, color: graphics.Color, is_major: bool
+    ) -> None:
+        """Draw a dot marker."""
+        radius = 3 if is_major else 2
+        marker_distance = self.clock_radius - 8
+
+        dot_x = self.center_x + int(marker_distance * math.cos(angle_rad))
+        dot_y = self.center_y + int(marker_distance * math.sin(angle_rad))
+
+        self._draw_circle(dot_x, dot_y, radius, color, fill=True)
+
+    def _draw_marker_square(
+        self, angle_rad: float, color: graphics.Color, is_major: bool
+    ) -> None:
+        """Draw a square marker."""
+        size = 3 if is_major else 2
+        marker_distance = self.clock_radius - 8
+
+        center_x = self.center_x + int(marker_distance * math.cos(angle_rad))
+        center_y = self.center_y + int(marker_distance * math.sin(angle_rad))
+
+        # Draw filled square
+        for dx in range(-size, size + 1):
+            for dy in range(-size, size + 1):
+                self._set_pixel(center_x + dx, center_y + dy, color)
+
+    def _draw_marker_diamond(
+        self, angle_rad: float, color: graphics.Color, is_major: bool
+    ) -> None:
+        """Draw a diamond marker."""
+        size = 3 if is_major else 2
+        marker_distance = self.clock_radius - 8
+
+        center_x = self.center_x + int(marker_distance * math.cos(angle_rad))
+        center_y = self.center_y + int(marker_distance * math.sin(angle_rad))
+
+        # Draw diamond shape
+        for i in range(-size, size + 1):
+            width = size - abs(i)
+            for j in range(-width, width + 1):
+                self._set_pixel(center_x + i, center_y + j, color)
+
+    def _draw_marker_tick(
+        self, angle_rad: float, color: graphics.Color, is_major: bool
+    ) -> None:
+        """Draw an improved tick marker."""
+        # Different lengths for major vs minor ticks
+        if is_major:
             outer_radius = self.clock_radius - 2
+            inner_radius = self.clock_radius - 10
+            thickness = 2
+        else:
+            outer_radius = self.clock_radius - 3
             inner_radius = self.clock_radius - 7
+            thickness = 1
 
-            # Calculate tick mark endpoints
-            outer_x = self.center_x + int(outer_radius * math.cos(angle_rad))
-            outer_y = self.center_y + int(outer_radius * math.sin(angle_rad))
-            inner_x = self.center_x + int(inner_radius * math.cos(angle_rad))
-            inner_y = self.center_y + int(inner_radius * math.sin(angle_rad))
+        # Calculate tick mark endpoints
+        outer_x = self.center_x + int(outer_radius * math.cos(angle_rad))
+        outer_y = self.center_y + int(outer_radius * math.sin(angle_rad))
+        inner_x = self.center_x + int(inner_radius * math.cos(angle_rad))
+        inner_y = self.center_y + int(inner_radius * math.sin(angle_rad))
 
-            # Draw the tick mark
+        # Draw thick tick for major positions
+        if thickness > 1:
+            self._draw_thick_line(inner_x, inner_y, outer_x, outer_y, color, thickness)
+        else:
             self._draw_line(inner_x, inner_y, outer_x, outer_y, color)
 
-    def _draw_clock_hands(self, colors: dict, now: datetime) -> None:
-        """Draw hour, minute, and second hands with proper proportions."""
+    def _draw_marker_number(
+        self, angle_rad: float, hour: int, color: graphics.Color, is_major: bool
+    ) -> None:
+        """Draw number markers."""
+        marker_distance = self.clock_radius - 15
+
+        center_x = self.center_x + int(marker_distance * math.cos(angle_rad))
+        center_y = self.center_y + int(marker_distance * math.sin(angle_rad))
+
+        # Convert hour to display number (0 -> 12)
+        display_hour = 12 if hour == 0 else hour
+        number_str = str(display_hour)
+
+        # Estimate text dimensions for centering
+        char_width = 6
+        char_height = 10
+        text_width = len(number_str) * char_width
+
+        # Calculate text position (top-left corner for DrawText)
+        text_x = center_x - text_width // 2
+        text_y = center_y + char_height // 2
+
+        # Draw the number
+        graphics.DrawText(
+            self.canvas, self.small_font, text_x, text_y, color, number_str
+        )
+
+    def _draw_hour_numbers(self, colors: dict) -> None:
+        """Draw hour numbers (1-12) around the clock face."""
         import math
+
+        config = self.config.get("second_display.settings", {})
+        number_style = config.get("number_style", "modern")
+        number_color = colors.get("numbers", graphics.Color(200, 220, 255))
+        number_distance = self.clock_radius - 18
+
+        for hour in range(12):
+            angle_deg = hour * 30
+            angle_rad = math.radians(angle_deg - 90)
+
+            center_x = self.center_x + int(number_distance * math.cos(angle_rad))
+            center_y = self.center_y + int(number_distance * math.sin(angle_rad))
+
+            if number_style == "roman":
+                numbers = [
+                    "XII",
+                    "I",
+                    "II",
+                    "III",
+                    "IV",
+                    "V",
+                    "VI",
+                    "VII",
+                    "VIII",
+                    "IX",
+                    "X",
+                    "XI",
+                ]
+                number_str = numbers[hour]
+            else:  # "arabic" or "modern"
+                display_hour = 12 if hour == 0 else hour
+                number_str = str(display_hour)
+
+            # Center the text
+            char_width = 6
+            char_height = 10
+            text_width = len(number_str) * char_width
+            text_x = center_x - text_width // 2
+            text_y = center_y + char_height // 2
+
+            graphics.DrawText(
+                self.canvas, self.small_font, text_x, text_y, number_color, number_str
+            )
+
+    def _draw_modern_clock_hands(self, colors: dict, now: datetime) -> None:
+        """Draw modern styled clock hands with enhanced visuals."""
+        import math
+
+        config = self.config.get("second_display.settings", {})
+        hand_style = config.get("hand_style", "modern")
+        show_shadows = config.get("hand_shadows", True)
+        smooth_seconds = config.get("smooth_seconds", True)
 
         # Get current time components
         hours = now.hour % 12
         minutes = now.minute
         seconds = now.second
+        microseconds = now.microsecond if smooth_seconds else 0
 
         # Calculate precise angles (0° = 12 o'clock, clockwise)
-        # Hour hand moves continuously based on minutes too
+        # Hour hand moves continuously based on minutes
         hour_angle = math.radians((hours * 30 + minutes * 0.5) - 90)
-        minute_angle = math.radians((minutes * 6) - 90)
-        second_angle = math.radians((seconds * 6) - 90)
+        minute_angle = math.radians((minutes * 6 + seconds * 0.1) - 90)
 
-        # Hand lengths proportional to the new clock radius (45)
-        hour_length = self.clock_radius - 18  # ~27 pixels from center
-        minute_length = self.clock_radius - 8  # ~37 pixels from center
-        second_length = self.clock_radius - 5  # ~40 pixels from center
+        # Smooth second hand movement if enabled
+        if smooth_seconds:
+            second_angle = math.radians((seconds * 6 + microseconds * 0.000006) - 90)
+        else:
+            second_angle = math.radians((seconds * 6) - 90)
+
+        # Modern hand proportions
+        hour_length = self.clock_radius - 22
+        minute_length = self.clock_radius - 10
+        second_length = self.clock_radius - 6
 
         # Calculate hand endpoints
         hour_x = self.center_x + int(hour_length * math.cos(hour_angle))
@@ -1186,30 +1546,203 @@ class ClockDisplay:
         second_x = self.center_x + int(second_length * math.cos(second_angle))
         second_y = self.center_y + int(second_length * math.sin(second_angle))
 
-        # Draw hands from back to front (thickest to thinnest)
+        # Draw shadows first if enabled
+        if show_shadows:
+            shadow_offset = 1
+            shadow_color = colors.get("hand_shadow", graphics.Color(16, 16, 16))
+
+            # Hour hand shadow
+            self._draw_modern_hand(
+                self.center_x + shadow_offset,
+                self.center_y + shadow_offset,
+                hour_x + shadow_offset,
+                hour_y + shadow_offset,
+                shadow_color,
+                hand_style,
+                "hour",
+            )
+
+            # Minute hand shadow
+            self._draw_modern_hand(
+                self.center_x + shadow_offset,
+                self.center_y + shadow_offset,
+                minute_x + shadow_offset,
+                minute_y + shadow_offset,
+                shadow_color,
+                hand_style,
+                "minute",
+            )
+
+        # Draw hands from back to front
         # Hour hand (thickest, shortest)
-        self._draw_thick_line(
+        self._draw_modern_hand(
             self.center_x,
             self.center_y,
             hour_x,
             hour_y,
             colors["hour_hand"],
-            thickness=2,
+            hand_style,
+            "hour",
         )
 
         # Minute hand (medium thickness, medium length)
-        self._draw_line(
-            self.center_x, self.center_y, minute_x, minute_y, colors["minute_hand"]
+        self._draw_modern_hand(
+            self.center_x,
+            self.center_y,
+            minute_x,
+            minute_y,
+            colors["minute_hand"],
+            hand_style,
+            "minute",
         )
 
-        # Second hand (thinnest, longest)
-        self._draw_line(
-            self.center_x, self.center_y, second_x, second_y, colors["second_hand"]
+        # Second hand (thinnest, longest) - no shadow for clean look
+        self._draw_modern_hand(
+            self.center_x,
+            self.center_y,
+            second_x,
+            second_y,
+            colors["second_hand"],
+            hand_style,
+            "second",
         )
 
-    def _draw_digital_time(self, color: graphics.Color, now: datetime) -> None:
-        """Draw digital time below the analog clock."""
-        time_str = now.strftime("%H:%M:%S")
+    def _draw_modern_hand(
+        self,
+        x0: int,
+        y0: int,
+        x1: int,
+        y1: int,
+        color: graphics.Color,
+        style: str,
+        hand_type: str,
+    ) -> None:
+        """Draw a single modern-styled clock hand."""
+        if style == "arrow":
+            self._draw_arrow_hand(x0, y0, x1, y1, color, hand_type)
+        elif style == "diamond":
+            self._draw_diamond_hand(x0, y0, x1, y1, color, hand_type)
+        elif style == "modern":
+            self._draw_tapered_hand(x0, y0, x1, y1, color, hand_type)
+        else:  # "classic"
+            thickness = {"hour": 3, "minute": 2, "second": 1}[hand_type]
+            if thickness > 1:
+                self._draw_thick_line(x0, y0, x1, y1, color, thickness)
+            else:
+                self._draw_line(x0, y0, x1, y1, color)
+
+    def _draw_tapered_hand(
+        self, x0: int, y0: int, x1: int, y1: int, color: graphics.Color, hand_type: str
+    ) -> None:
+        """Draw a tapered hand that's thicker at the center and thinner at the tip."""
+        import math
+
+        # Calculate hand vector
+        dx = x1 - x0
+        dy = y1 - y0
+        length = math.sqrt(dx * dx + dy * dy)
+
+        if length == 0:
+            return
+
+        # Normalize direction vector
+        unit_x = dx / length
+        unit_y = dy / length
+
+        # Perpendicular vector for hand width
+        perp_x = -unit_y
+        perp_y = unit_x
+
+        # Hand width based on type
+        base_width = {"hour": 2.5, "minute": 1.5, "second": 0.5}[hand_type]
+
+        # Draw hand as a series of lines with decreasing width
+        segments = int(length)
+        for i in range(segments):
+            progress = i / segments
+            width = base_width * (1 - progress * 0.7)  # Taper to 30% of original width
+
+            # Current position along the hand
+            curr_x = x0 + int(unit_x * i)
+            curr_y = y0 + int(unit_y * i)
+
+            # Draw cross-section
+            offset_x = int(perp_x * width)
+            offset_y = int(perp_y * width)
+
+            self._draw_line(
+                curr_x - offset_x,
+                curr_y - offset_y,
+                curr_x + offset_x,
+                curr_y + offset_y,
+                color,
+            )
+
+    def _draw_arrow_hand(
+        self, x0: int, y0: int, x1: int, y1: int, color: graphics.Color, hand_type: str
+    ) -> None:
+        """Draw an arrow-style hand with pointed tip."""
+        # Draw main line
+        thickness = {"hour": 2, "minute": 2, "second": 1}[hand_type]
+        if thickness > 1:
+            self._draw_thick_line(x0, y0, x1, y1, color, thickness)
+        else:
+            self._draw_line(x0, y0, x1, y1, color)
+
+        # Add arrow tip for hour and minute hands
+        if hand_type != "second":
+            import math
+
+            # Calculate arrow head
+            dx = x1 - x0
+            dy = y1 - y0
+            length = math.sqrt(dx * dx + dy * dy)
+
+            if length > 0:
+                # Unit vector pointing backward
+                unit_x = -dx / length
+                unit_y = -dy / length
+
+                # Arrow head size
+                arrow_size = {"hour": 4, "minute": 3}[hand_type]
+
+                # Arrow head points
+                arrow_x1 = x1 + int(unit_x * arrow_size - unit_y * arrow_size / 2)
+                arrow_y1 = y1 + int(unit_y * arrow_size + unit_x * arrow_size / 2)
+                arrow_x2 = x1 + int(unit_x * arrow_size + unit_y * arrow_size / 2)
+                arrow_y2 = y1 + int(unit_y * arrow_size - unit_x * arrow_size / 2)
+
+                # Draw arrow head
+                self._draw_line(x1, y1, arrow_x1, arrow_y1, color)
+                self._draw_line(x1, y1, arrow_x2, arrow_y2, color)
+
+    def _draw_diamond_hand(
+        self, x0: int, y0: int, x1: int, y1: int, color: graphics.Color, hand_type: str
+    ) -> None:
+        """Draw a hand with diamond-shaped tip."""
+        # Draw main line
+        thickness = {"hour": 2, "minute": 1, "second": 1}[hand_type]
+        if thickness > 1:
+            self._draw_thick_line(x0, y0, x1, y1, color, thickness)
+        else:
+            self._draw_line(x0, y0, x1, y1, color)
+
+        # Add diamond tip
+        if hand_type != "second":
+            diamond_size = {"hour": 3, "minute": 2}[hand_type]
+            self._draw_circle(x1, y1, diamond_size, color, fill=True)
+
+    def _draw_modern_digital_time(self, colors: dict, now: datetime) -> None:
+        """Draw modern digital time below the analog clock."""
+        config = self.config.get("second_display.settings", {})
+        digital_style = config.get("digital_style", "modern")
+        show_background = config.get("digital_background", False)
+
+        # Format time based on style
+        if digital_style == "segment":
+            time_str = now.strftime("%H:%M")  # Simpler for segment style
+        else:
+            time_str = now.strftime("%H:%M:%S")
 
         # Calculate text positioning
         char_width = 6  # Small font character width
@@ -1221,13 +1754,45 @@ class ClockDisplay:
 
         # Ensure it fits within the display bounds
         if text_y < self.height - 5:
-            graphics.DrawText(
-                self.canvas, self.small_font, text_x, text_y, color, time_str
-            )
+            # Draw background if enabled
+            if show_background:
+                bg_color = colors.get("digital_bg", graphics.Color(0, 0, 0))
+                padding = 2
+                # Draw background rectangle
+                for x in range(text_x - padding, text_x + text_width + padding):
+                    for y in range(text_y - 8, text_y + 2):
+                        if 0 <= x < self.width and 0 <= y < self.height:
+                            self._set_pixel(x, y, bg_color)
 
-    def _draw_date(self, color: graphics.Color, now: datetime) -> None:
-        """Draw date below the digital time."""
-        date_str = now.strftime("%Y-%m-%d")
+            # Draw text with style
+            if digital_style == "segment":
+                self._draw_segment_style_text(
+                    text_x, text_y, time_str, colors["digital"]
+                )
+            else:
+                graphics.DrawText(
+                    self.canvas,
+                    self.small_font,
+                    text_x,
+                    text_y,
+                    colors["digital"],
+                    time_str,
+                )
+
+    def _draw_segment_style_text(
+        self, x: int, y: int, text: str, color: graphics.Color
+    ) -> None:
+        """Draw text in a 7-segment display style (simplified)."""
+        # This is a simplified version - you could expand this for full 7-segment rendering
+        # For now, just use a different font or add some visual effects
+        graphics.DrawText(self.canvas, self.medium_font, x, y, color, text)
+
+    def _draw_modern_date(self, colors: dict, now: datetime) -> None:
+        """Draw modern date below the digital time."""
+        config = self.config.get("second_display.settings", {})
+        date_format = config.get("date_format", "%Y-%m-%d")
+
+        date_str = now.strftime(date_format)
 
         # Calculate text positioning
         char_width = 6  # Small font character width
@@ -1240,7 +1805,7 @@ class ClockDisplay:
         # Ensure it fits within the display bounds
         if text_y < self.height - 5:
             graphics.DrawText(
-                self.canvas, self.small_font, text_x, text_y, color, date_str
+                self.canvas, self.small_font, text_x, text_y, colors["date"], date_str
             )
 
 
