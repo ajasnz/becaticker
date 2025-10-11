@@ -686,13 +686,13 @@ class AnalogClock:
 
         # Clock configuration - base 64x64 coordinate system, scaled to 128x128
         # Drawing in 64x64 space, then scaling to fill 2x2 panel area
-        self.clock_width = 64   # Base coordinate system
+        self.clock_width = 64  # Base coordinate system
         self.clock_height = 64  # Base coordinate system
-        self.center_x = 32      # Center of 64x64 area
-        self.center_y = 32      # Center of 64x64 area
+        self.center_x = 32  # Center of 64x64 area
+        self.center_y = 32  # Center of 64x64 area
 
         # Clock face parameters - sized for 64x64 base, will be scaled up
-        self.face_radius = 28   # Fit within 64x64 with margin
+        self.face_radius = 28  # Fit within 64x64 with margin
         self.hour_hand_length = self.face_radius * 0.5
         self.minute_hand_length = self.face_radius * 0.7
         self.second_hand_length = self.face_radius * 0.9
@@ -898,20 +898,15 @@ class AnalogClock:
         """Set a pixel on the shared matrix with 2x2 panel mapping for clock."""
         # Manual 2x2 panel mapping to span the full clock across all 4 panels
         # Each panel is 64x64, arranged in 2x2 formation
-        
+
         # Scale coordinates to span the full 2x2 area (128x128)
         scaled_x = int((x / 64.0) * 128)  # Scale from 64 to 128
         scaled_y = int((y / 64.0) * 128)  # Scale from 64 to 128
-        
+
         # Apply row offset for chain positioning
         final_y = scaled_y + self.row_offset
-        
-        if (
-            0 <= scaled_x < 128
-            and 0 <= scaled_y < 128
-            and final_y >= 0
-            and self.canvas
-        ):
+
+        if 0 <= scaled_x < 128 and 0 <= scaled_y < 128 and final_y >= 0 and self.canvas:
             self.canvas.SetPixel(scaled_x, final_y, color.red, color.green, color.blue)
         elif self.canvas and 0 <= y < 64:
             logger.debug(
