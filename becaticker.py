@@ -837,28 +837,25 @@ class ClockDisplay:
     def _draw_analog_clock(self, colors: dict, now: datetime) -> None:
         """Draw the complete analog clock with all elements."""
         # Clear the clock area first (optional, but helps with clean rendering)
-        
+
         # Draw elements in order from back to front
         # 1. Draw the outer circle/ring of the clock face
         self._draw_clock_face(colors["face"])
-        
+
         # 2. Draw hour tick marks at all 12 positions
         self._draw_hour_ticks(colors["ticks"])
-        
-        # 3. Draw Roman numerals at 12, 3, 6, 9 positions
-        self._draw_roman_numerals(colors["numbers"])
-        
-        # 4. Draw clock hands (hour, minute, second)
+
+        # 3. Draw clock hands (hour, minute, second)
         self._draw_clock_hands(colors, now)
-        
+
         # 5. Draw center dot on top of hands
         self._draw_center_point(colors["hour_hand"], radius=2)
-        
+
         # 6. Draw digital time below the clock if enabled
         if self.config.get("second_display.settings.show_digital", True):
             self._draw_digital_time(colors["digital"], now)
-        
-        # 7. Draw date below digital time if enabled  
+
+        # 7. Draw date below digital time if enabled
         if self.config.get("second_display.settings.show_date", True):
             self._draw_date(colors["date"], now)
 
@@ -1022,102 +1019,99 @@ class ClockDisplay:
         self._draw_circle(self.center_x, self.center_y, radius, color, fill=True)
 
     def _draw_clock_face(self, color: graphics.Color) -> None:
-        """Draw the outer circle of the analog clock face.""" 
+        """Draw the outer circle of the analog clock face."""
         # Draw the main clock circle outline
-        self._draw_circle(self.center_x, self.center_y, self.clock_radius, color, fill=False)
+        self._draw_circle(
+            self.center_x, self.center_y, self.clock_radius, color, fill=False
+        )
 
     def _draw_roman_numerals(self, color: graphics.Color) -> None:
         """Draw Roman numerals at 12, 3, 6, 9 positions inside the clock face."""
         import math
-        
+
         # Position numerals well inside the clock face
         # Use a radius that keeps numerals comfortably inside the circle
         numeral_radius = self.clock_radius - 12  # Much closer to center for safety
-        
+
         # Roman numerals with their positions
         # Using precise angle calculations for perfect positioning
         numerals = [
-            ("XII", 0),    # 12 o'clock (top)
-            ("III", 90),   # 3 o'clock (right)  
-            ("VI", 180),   # 6 o'clock (bottom)
-            ("IX", 270)    # 9 o'clock (left)
+            ("XII", 0),  # 12 o'clock (top)
+            ("III", 90),  # 3 o'clock (right)
+            ("VI", 180),  # 6 o'clock (bottom)
+            ("IX", 270),  # 9 o'clock (left)
         ]
-        
+
         for numeral, angle_deg in numerals:
             # Convert angle to radians, with 0° at top (12 o'clock position)
             angle_rad = math.radians(angle_deg - 90)
-            
+
             # Calculate the center position for the numeral
             numeral_center_x = self.center_x + int(numeral_radius * math.cos(angle_rad))
             numeral_center_y = self.center_y + int(numeral_radius * math.sin(angle_rad))
-            
+
             # Estimate text dimensions for centering
             # Small font is approximately 6 pixels wide per character, 10 pixels tall
             char_width = 6
             char_height = 10
             text_width = len(numeral) * char_width
             text_height = char_height
-            
+
             # Calculate text position (top-left corner for DrawText)
             text_x = numeral_center_x - text_width // 2
             text_y = numeral_center_y + text_height // 2  # DrawText uses baseline
-            
+
             # Ensure the text stays within bounds
             text_x = max(0, min(text_x, self.width - text_width))
             text_y = max(text_height, min(text_y, self.height))
-            
+
             # Draw the Roman numeral
-            graphics.DrawText(self.canvas, self.small_font, text_x, text_y, color, numeral)
+            graphics.DrawText(
+                self.canvas, self.small_font, text_x, text_y, color, numeral
+            )
 
     def _draw_hour_ticks(self, color: graphics.Color) -> None:
         """Draw tick marks at all 12 hour positions."""
         import math
-        
+
         for hour in range(12):
             # Calculate angle for this hour (0° = 12 o'clock, clockwise)
             angle_deg = hour * 30  # 30 degrees per hour
             angle_rad = math.radians(angle_deg - 90)  # -90 to start at top
-            
-            # Different tick sizes for major (Roman numeral) and minor positions
-            if hour % 3 == 0:
-                # Major ticks at 12, 3, 6, 9 (where Roman numerals are)
-                # Make these slightly shorter since numerals are present
-                outer_radius = self.clock_radius - 2
-                inner_radius = self.clock_radius - 8
-            else:
-                # Minor ticks at 1, 2, 4, 5, 7, 8, 10, 11
-                outer_radius = self.clock_radius - 2  
-                inner_radius = self.clock_radius - 6
-            
+
+            # Uniform tick marks since we no longer have numerals
+            outer_radius = self.clock_radius - 2
+            inner_radius = self.clock_radius - 7
+
             # Calculate tick mark endpoints
             outer_x = self.center_x + int(outer_radius * math.cos(angle_rad))
             outer_y = self.center_y + int(outer_radius * math.sin(angle_rad))
             inner_x = self.center_x + int(inner_radius * math.cos(angle_rad))
             inner_y = self.center_y + int(inner_radius * math.sin(angle_rad))
-            
+
             # Draw the tick mark
             self._draw_line(inner_x, inner_y, outer_x, outer_y, color)
 
     def _draw_clock_hands(self, colors: dict, now: datetime) -> None:
         """Draw hour, minute, and second hands with proper proportions."""
         import math
-        
+
         # Get current time components
         hours = now.hour % 12
-        minutes = now.minute  
+        minutes = now.minute
         seconds = now.second
-        
+
         # Calculate precise angles (0° = 12 o'clock, clockwise)
         # Hour hand moves continuously based on minutes too
         hour_angle = math.radians((hours * 30 + minutes * 0.5) - 90)
-        minute_angle = math.radians((minutes * 6) - 90) 
+        minute_angle = math.radians((minutes * 6) - 90)
         second_angle = math.radians((seconds * 6) - 90)
-        
+
         # Hand lengths proportional to the new clock radius (45)
-        hour_length = self.clock_radius - 18    # ~27 pixels from center
-        minute_length = self.clock_radius - 8   # ~37 pixels from center  
-        second_length = self.clock_radius - 5   # ~40 pixels from center
-        
+        hour_length = self.clock_radius - 18  # ~27 pixels from center
+        minute_length = self.clock_radius - 8  # ~37 pixels from center
+        second_length = self.clock_radius - 5  # ~40 pixels from center
+
         # Calculate hand endpoints
         hour_x = self.center_x + int(hour_length * math.cos(hour_angle))
         hour_y = self.center_y + int(hour_length * math.sin(hour_angle))
@@ -1125,57 +1119,63 @@ class ClockDisplay:
         minute_y = self.center_y + int(minute_length * math.sin(minute_angle))
         second_x = self.center_x + int(second_length * math.cos(second_angle))
         second_y = self.center_y + int(second_length * math.sin(second_angle))
-        
+
         # Draw hands from back to front (thickest to thinnest)
         # Hour hand (thickest, shortest)
         self._draw_thick_line(
-            self.center_x, self.center_y, hour_x, hour_y, 
-            colors["hour_hand"], thickness=2
+            self.center_x,
+            self.center_y,
+            hour_x,
+            hour_y,
+            colors["hour_hand"],
+            thickness=2,
         )
-        
-        # Minute hand (medium thickness, medium length) 
+
+        # Minute hand (medium thickness, medium length)
         self._draw_line(
-            self.center_x, self.center_y, minute_x, minute_y, 
-            colors["minute_hand"]
+            self.center_x, self.center_y, minute_x, minute_y, colors["minute_hand"]
         )
-        
+
         # Second hand (thinnest, longest)
         self._draw_line(
-            self.center_x, self.center_y, second_x, second_y,
-            colors["second_hand"]
+            self.center_x, self.center_y, second_x, second_y, colors["second_hand"]
         )
 
     def _draw_digital_time(self, color: graphics.Color, now: datetime) -> None:
         """Draw digital time below the analog clock."""
         time_str = now.strftime("%H:%M:%S")
-        
+
         # Calculate text positioning
         char_width = 6  # Small font character width
         text_width = len(time_str) * char_width
         text_x = self.center_x - text_width // 2
-        
+
         # Position below the clock with some margin
         text_y = self.center_y + self.clock_radius + 15
-        
+
         # Ensure it fits within the display bounds
         if text_y < self.height - 5:
-            graphics.DrawText(self.canvas, self.small_font, text_x, text_y, color, time_str)
+            graphics.DrawText(
+                self.canvas, self.small_font, text_x, text_y, color, time_str
+            )
 
     def _draw_date(self, color: graphics.Color, now: datetime) -> None:
         """Draw date below the digital time."""
         date_str = now.strftime("%Y-%m-%d")
-        
-        # Calculate text positioning  
+
+        # Calculate text positioning
         char_width = 6  # Small font character width
         text_width = len(date_str) * char_width
         text_x = self.center_x - text_width // 2
-        
+
         # Position below the digital time
         text_y = self.center_y + self.clock_radius + 28
-        
+
         # Ensure it fits within the display bounds
         if text_y < self.height - 5:
-            graphics.DrawText(self.canvas, self.small_font, text_x, text_y, color, date_str)
+            graphics.DrawText(
+                self.canvas, self.small_font, text_x, text_y, color, date_str
+            )
 
 
 class UserManager:
