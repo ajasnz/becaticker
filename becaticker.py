@@ -507,7 +507,7 @@ class PictureViewer:
         self.image_list = []
         self.current_index = 0
         self.last_update = 0
-        
+
         # Create images directory if it doesn't exist
         self.image_dir = os.path.abspath(
             self.config.get("second_display.picture_viewer.image_directory", "images/")
@@ -523,8 +523,10 @@ class PictureViewer:
         """Get list of uploaded images with metadata."""
         images = []
         settings = self.config.get("second_display.picture_viewer", {})
-        supported_formats = settings.get("supported_formats", ["jpg", "jpeg", "png", "bmp", "gif"])
-        
+        supported_formats = settings.get(
+            "supported_formats", ["jpg", "jpeg", "png", "bmp", "gif"]
+        )
+
         try:
             for ext in supported_formats:
                 pattern = os.path.join(self.image_dir, f"*.{ext}")
@@ -532,69 +534,78 @@ class PictureViewer:
                     try:
                         stat = os.stat(filepath)
                         filename = os.path.basename(filepath)
-                        
+
                         # Get image dimensions
                         with Image.open(filepath) as img:
                             width, height = img.size
-                        
-                        images.append({
-                            "filename": filename,
-                            "filepath": filepath,
-                            "size": stat.st_size,
-                            "modified": stat.st_mtime,
-                            "width": width,
-                            "height": height,
-                        })
+
+                        images.append(
+                            {
+                                "filename": filename,
+                                "filepath": filepath,
+                                "size": stat.st_size,
+                                "modified": stat.st_mtime,
+                                "width": width,
+                                "height": height,
+                            }
+                        )
                     except Exception as e:
                         logger.warning(f"Error reading image {filepath}: {e}")
-                        
+
             # Sort by modification time (newest first)
             images.sort(key=lambda x: x["modified"], reverse=True)
             return images
-            
+
         except Exception as e:
             logger.error(f"Error listing images: {e}")
             return []
 
-    def save_uploaded_image(self, file_storage, filename: str = None) -> Tuple[bool, str]:
+    def save_uploaded_image(
+        self, file_storage, filename: str = None
+    ) -> Tuple[bool, str]:
         """Save an uploaded image file."""
         try:
             settings = self.config.get("second_display.picture_viewer", {})
             max_size = settings.get("max_file_size", 10485760)  # 10MB default
-            supported_formats = settings.get("supported_formats", ["jpg", "jpeg", "png", "bmp", "gif"])
-            
+            supported_formats = settings.get(
+                "supported_formats", ["jpg", "jpeg", "png", "bmp", "gif"]
+            )
+
             # Check file size
             file_storage.seek(0, 2)  # Seek to end
             file_size = file_storage.tell()
             file_storage.seek(0)  # Reset to beginning
-            
+
             if file_size > max_size:
                 return False, f"File too large. Maximum size is {max_size // 1048576}MB"
-            
+
             # Use provided filename or the original filename
             if not filename:
                 filename = secure_filename(file_storage.filename)
-                
+
             if not filename:
                 return False, "Invalid filename"
-                
+
             # Check file extension
-            ext = filename.lower().split('.')[-1] if '.' in filename else ''
+            ext = filename.lower().split(".")[-1] if "." in filename else ""
             if ext not in supported_formats:
-                return False, f"Unsupported format. Supported: {', '.join(supported_formats)}"
-            
+                return (
+                    False,
+                    f"Unsupported format. Supported: {', '.join(supported_formats)}",
+                )
+
             # Create unique filename if file already exists
-            base_name = '.'.join(filename.split('.')[:-1])
+            base_name = ".".join(filename.split(".")[:-1])
             counter = 1
             while os.path.exists(os.path.join(self.image_dir, filename)):
                 filename = f"{base_name}_{counter}.{ext}"
                 counter += 1
-            
+
             filepath = os.path.join(self.image_dir, filename)
-            
+
             # Save the file
             file_storage.save(filepath)
-            
+
             # Verify it's a valid image by trying to open it
             try:
                 with Image.open(filepath) as img:
@@ -602,10 +613,10 @@ class PictureViewer:
             except Exception as e:
                 os.remove(filepath)  # Clean up invalid file
                 return False, f"Invalid image file: {str(e)}"
-            
+
             logger.info(f"Image saved successfully: {filename}")
             return True, filename
-            
+
         except Exception as e:
             logger.error(f"Error saving uploaded image: {e}")
             return False, f"Upload failed: {str(e)}"
@@ -614,53 +625,57 @@ class PictureViewer:
         """Delete an uploaded image."""
         try:
             filepath = os.path.join(self.image_dir, secure_filename(filename))
-            
+
             if not os.path.exists(filepath):
                 return False, "Image not found"
-                
+
             if not filepath.startswith(self.image_dir):
                 return False, "Invalid file path"
-                
+
             os.remove(filepath)
             logger.info(f"Image deleted: {filename}")
-            
+
             # If this was the current image, stop picture mode
             if self.current_image and self.current_image == filename:
                 self.stop_picture_mode()
-                
+
             return True, "Image deleted successfully"
-            
+
         except Exception as e:
             logger.error(f"Error deleting image: {e}")
             return False, f"Delete failed: {str(e)}"
 
-    def load_image(self, filename: str, display_size: Tuple[int, int] = (128, 128)) -> Optional[Image.Image]:
+    def load_image(
+        self, filename: str, display_size: Tuple[int, int] = (128, 128)
+    ) -> Optional[Image.Image]:
         """Load and process an image for display."""
         try:
             filepath = os.path.join(self.image_dir, secure_filename(filename))
-            
+
             if not os.path.exists(filepath):
                 logger.error(f"Image not found: {filepath}")
                 return None
-                
+
             settings = self.config.get("second_display.picture_viewer", {})
             fit_mode = settings.get("fit_mode", "contain")
             bg_color = tuple(settings.get("background_color", [0, 0, 0]))
             brightness = settings.get("brightness_adjustment", 1.0)
             auto_rotate = settings.get("auto_rotate", True)
-            
+
             # Load the image
             with Image.open(filepath) as img:
                 # Handle transparency
-                if img.mode in ('RGBA', 'LA'):
-                    background = Image.new('RGB', img.size, bg_color)
-                    background.paste(img, mask=img.split()[-1])  # Use alpha channel as mask
+                if img.mode in ("RGBA", "LA"):
+                    background = Image.new("RGB", img.size, bg_color)
+                    background.paste(
+                        img, mask=img.split()[-1]
+                    )  # Use alpha channel as mask
                     img = background
-                elif img.mode != 'RGB':
-                    img = img.convert('RGB')
-                
+                elif img.mode != "RGB":
+                    img = img.convert("RGB")
+
                 # Auto-rotate based on EXIF data
-                if auto_rotate and hasattr(img, '_getexif'):
+                if auto_rotate and hasattr(img, "_getexif"):
                     try:
                         exif = img._getexif()
                         if exif is not None:
@@ -673,7 +688,7 @@ class PictureViewer:
                                 img = img.rotate(90, expand=True)
                     except Exception:
                         pass  # Ignore EXIF errors
-                
+
                 # Resize based on fit mode
                 if fit_mode == "stretch":
                     img = img.resize(display_size, Image.Resampling.LANCZOS)
@@ -682,10 +697,12 @@ class PictureViewer:
                     # Center crop to exact size
                     left = (img.width - display_size[0]) // 2
                     top = (img.height - display_size[1]) // 2
-                    img = img.crop((left, top, left + display_size[0], top + display_size[1]))
+                    img = img.crop(
+                        (left, top, left + display_size[0], top + display_size[1])
+                    )
                 elif fit_mode == "center":
                     # Center the image without scaling
-                    background = Image.new('RGB', display_size, bg_color)
+                    background = Image.new("RGB", display_size, bg_color)
                     paste_x = (display_size[0] - img.width) // 2
                     paste_y = (display_size[1] - img.height) // 2
                     background.paste(img, (paste_x, paste_y))
@@ -693,22 +710,23 @@ class PictureViewer:
                 else:  # contain (default)
                     # Maintain aspect ratio, fit within display
                     img.thumbnail(display_size, Image.Resampling.LANCZOS)
-                    background = Image.new('RGB', display_size, bg_color)
+                    background = Image.new("RGB", display_size, bg_color)
                     paste_x = (display_size[0] - img.width) // 2
                     paste_y = (display_size[1] - img.height) // 2
                     background.paste(img, (paste_x, paste_y))
                     img = background
-                
+
                 # Apply brightness adjustment
                 if brightness != 1.0:
                     import numpy as np
+
                     img_array = np.array(img, dtype=np.float32)
                     img_array *= brightness
                     img_array = np.clip(img_array, 0, 255).astype(np.uint8)
                     img = Image.fromarray(img_array)
-                
+
                 return img
-                
+
         except Exception as e:
             logger.error(f"Error loading image {filename}: {e}")
             return None
@@ -729,12 +747,14 @@ class PictureViewer:
                     self.picture_active = True
                     self.image_list = [img["filename"] for img in images]
                     self.current_index = 0
-                    logger.info(f"Picture mode started with first image: {self.current_image}")
+                    logger.info(
+                        f"Picture mode started with first image: {self.current_image}"
+                    )
                     return True
                 else:
                     logger.error("No images available for picture mode")
                     return False
-                    
+
         except Exception as e:
             logger.error(f"Error starting picture mode: {e}")
             return False
@@ -758,22 +778,24 @@ class PictureViewer:
             if len(images) < 2:
                 logger.warning("Need at least 2 images for slideshow")
                 return False
-                
+
             self.image_list = [img["filename"] for img in images]
             self.current_index = 0
             self.slideshow_active = True
             self.picture_active = True
-            
+
             if self.slideshow_thread and self.slideshow_thread.is_alive():
                 self.slideshow_active = False
                 self.slideshow_thread.join()
-            
-            self.slideshow_thread = threading.Thread(target=self._slideshow_worker, daemon=True)
+
+            self.slideshow_thread = threading.Thread(
+                target=self._slideshow_worker, daemon=True
+            )
             self.slideshow_thread.start()
-            
+
             logger.info("Slideshow started")
             return True
-            
+
         except Exception as e:
             logger.error(f"Error starting slideshow: {e}")
             return False
@@ -796,14 +818,14 @@ class PictureViewer:
             try:
                 settings = self.config.get("second_display.picture_viewer", {})
                 interval = settings.get("slideshow_interval", 10)
-                
+
                 time.sleep(interval)
-                
+
                 if self.slideshow_active:
                     self.current_index = (self.current_index + 1) % len(self.image_list)
                     self.current_image = self.image_list[self.current_index]
                     logger.debug(f"Slideshow advanced to: {self.current_image}")
-                    
+
             except Exception as e:
                 logger.error(f"Error in slideshow worker: {e}")
                 break
@@ -818,10 +840,10 @@ class PictureViewer:
             if not self.image_list:
                 images = self.get_uploaded_images()
                 self.image_list = [img["filename"] for img in images]
-                
+
             if not self.image_list:
                 return False
-                
+
             self.current_index = (self.current_index + 1) % len(self.image_list)
             self.current_image = self.image_list[self.current_index]
             return True
@@ -835,10 +857,10 @@ class PictureViewer:
             if not self.image_list:
                 images = self.get_uploaded_images()
                 self.image_list = [img["filename"] for img in images]
-                
+
             if not self.image_list:
                 return False
-                
+
             self.current_index = (self.current_index - 1) % len(self.image_list)
             self.current_image = self.image_list[self.current_index]
             return True
@@ -2553,7 +2575,12 @@ class ClockDisplay:
         text_x = self.center_x - len(image_text) * 3
         text_y = 30
         graphics.DrawText(
-            self.canvas, self.small_font, text_x, text_y, colors.get("digital", graphics.Color(255, 255, 255)), image_text
+            self.canvas,
+            self.small_font,
+            text_x,
+            text_y,
+            colors.get("digital", graphics.Color(255, 255, 255)),
+            image_text,
         )
 
         # Show recent images
@@ -2562,7 +2589,7 @@ class ClockDisplay:
             filename = img["filename"]
             if len(filename) > 15:
                 filename = filename[:12] + "..."
-            
+
             text_x = 5
             graphics.DrawText(
                 self.canvas,
@@ -2579,7 +2606,12 @@ class ClockDisplay:
         text_x = self.center_x - len(instruction) * 3
         text_y = self.height - 15
         graphics.DrawText(
-            self.canvas, self.small_font, text_x, text_y, colors.get("date", graphics.Color(128, 180, 255)), instruction
+            self.canvas,
+            self.small_font,
+            text_x,
+            text_y,
+            colors.get("date", graphics.Color(128, 180, 255)),
+            instruction,
         )
 
     def _draw_picture_unavailable(self, colors: dict) -> None:
@@ -2610,7 +2642,12 @@ class ClockDisplay:
         text_x = self.center_x - len(text) * 3
         text_y = self.center_y + 15
         graphics.DrawText(
-            self.canvas, self.small_font, text_x, text_y, colors.get("date", graphics.Color(128, 128, 128)), text
+            self.canvas,
+            self.small_font,
+            text_x,
+            text_y,
+            colors.get("date", graphics.Color(128, 128, 128)),
+            text,
         )
 
 
@@ -3253,19 +3290,27 @@ class BecaTicker:
         @login_required
         def upload_picture():
             try:
-                if 'file' not in request.files:
-                    return jsonify({"status": "error", "message": "No file provided"}), 400
-                
-                file = request.files['file']
-                if file.filename == '':
-                    return jsonify({"status": "error", "message": "No file selected"}), 400
-                
+                if "file" not in request.files:
+                    return (
+                        jsonify({"status": "error", "message": "No file provided"}),
+                        400,
+                    )
+
+                file = request.files["file"]
+                if file.filename == "":
+                    return (
+                        jsonify({"status": "error", "message": "No file selected"}),
+                        400,
+                    )
+
                 success, message = self.picture_viewer.save_uploaded_image(file)
                 if success:
-                    return jsonify({"status": "success", "message": f"Image uploaded: {message}"})
+                    return jsonify(
+                        {"status": "success", "message": f"Image uploaded: {message}"}
+                    )
                 else:
                     return jsonify({"status": "error", "message": message}), 400
-                    
+
             except Exception as e:
                 logger.error(f"Error uploading picture: {e}")
                 return jsonify({"status": "error", "message": str(e)}), 500
@@ -3275,15 +3320,18 @@ class BecaTicker:
         def delete_picture():
             try:
                 data = request.get_json()
-                if not data or 'filename' not in data:
-                    return jsonify({"status": "error", "message": "Filename required"}), 400
-                
-                success, message = self.picture_viewer.delete_image(data['filename'])
+                if not data or "filename" not in data:
+                    return (
+                        jsonify({"status": "error", "message": "Filename required"}),
+                        400,
+                    )
+
+                success, message = self.picture_viewer.delete_image(data["filename"])
                 if success:
                     return jsonify({"status": "success", "message": message})
                 else:
                     return jsonify({"status": "error", "message": message}), 400
-                    
+
             except Exception as e:
                 logger.error(f"Error deleting picture: {e}")
                 return jsonify({"status": "error", "message": str(e)}), 500
@@ -3293,13 +3341,23 @@ class BecaTicker:
         def start_picture_viewer():
             try:
                 data = request.get_json()
-                filename = data.get('filename') if data else None
-                
+                filename = data.get("filename") if data else None
+
                 if self.picture_viewer.start_picture_mode(filename):
-                    return jsonify({"status": "success", "message": "Picture viewer started"})
+                    return jsonify(
+                        {"status": "success", "message": "Picture viewer started"}
+                    )
                 else:
-                    return jsonify({"status": "error", "message": "Failed to start picture viewer"}), 400
-                    
+                    return (
+                        jsonify(
+                            {
+                                "status": "error",
+                                "message": "Failed to start picture viewer",
+                            }
+                        ),
+                        400,
+                    )
+
             except Exception as e:
                 logger.error(f"Error starting picture viewer: {e}")
                 return jsonify({"status": "error", "message": str(e)}), 500
@@ -3309,10 +3367,20 @@ class BecaTicker:
         def stop_picture_viewer():
             try:
                 if self.picture_viewer.stop_picture_mode():
-                    return jsonify({"status": "success", "message": "Picture viewer stopped"})
+                    return jsonify(
+                        {"status": "success", "message": "Picture viewer stopped"}
+                    )
                 else:
-                    return jsonify({"status": "error", "message": "Failed to stop picture viewer"}), 400
-                    
+                    return (
+                        jsonify(
+                            {
+                                "status": "error",
+                                "message": "Failed to stop picture viewer",
+                            }
+                        ),
+                        400,
+                    )
+
             except Exception as e:
                 logger.error(f"Error stopping picture viewer: {e}")
                 return jsonify({"status": "error", "message": str(e)}), 500
@@ -3322,10 +3390,17 @@ class BecaTicker:
         def start_slideshow():
             try:
                 if self.picture_viewer.start_slideshow():
-                    return jsonify({"status": "success", "message": "Slideshow started"})
+                    return jsonify(
+                        {"status": "success", "message": "Slideshow started"}
+                    )
                 else:
-                    return jsonify({"status": "error", "message": "Failed to start slideshow"}), 400
-                    
+                    return (
+                        jsonify(
+                            {"status": "error", "message": "Failed to start slideshow"}
+                        ),
+                        400,
+                    )
+
             except Exception as e:
                 logger.error(f"Error starting slideshow: {e}")
                 return jsonify({"status": "error", "message": str(e)}), 500
@@ -3335,10 +3410,17 @@ class BecaTicker:
         def stop_slideshow():
             try:
                 if self.picture_viewer.stop_slideshow():
-                    return jsonify({"status": "success", "message": "Slideshow stopped"})
+                    return jsonify(
+                        {"status": "success", "message": "Slideshow stopped"}
+                    )
                 else:
-                    return jsonify({"status": "error", "message": "Failed to stop slideshow"}), 400
-                    
+                    return (
+                        jsonify(
+                            {"status": "error", "message": "Failed to stop slideshow"}
+                        ),
+                        400,
+                    )
+
             except Exception as e:
                 logger.error(f"Error stopping slideshow: {e}")
                 return jsonify({"status": "error", "message": str(e)}), 500
@@ -3348,10 +3430,15 @@ class BecaTicker:
         def next_picture():
             try:
                 if self.picture_viewer.next_image():
-                    return jsonify({"status": "success", "message": "Switched to next image"})
+                    return jsonify(
+                        {"status": "success", "message": "Switched to next image"}
+                    )
                 else:
-                    return jsonify({"status": "error", "message": "No images available"}), 400
-                    
+                    return (
+                        jsonify({"status": "error", "message": "No images available"}),
+                        400,
+                    )
+
             except Exception as e:
                 logger.error(f"Error switching to next picture: {e}")
                 return jsonify({"status": "error", "message": str(e)}), 500
@@ -3361,10 +3448,15 @@ class BecaTicker:
         def previous_picture():
             try:
                 if self.picture_viewer.previous_image():
-                    return jsonify({"status": "success", "message": "Switched to previous image"})
+                    return jsonify(
+                        {"status": "success", "message": "Switched to previous image"}
+                    )
                 else:
-                    return jsonify({"status": "error", "message": "No images available"}), 400
-                    
+                    return (
+                        jsonify({"status": "error", "message": "No images available"}),
+                        400,
+                    )
+
             except Exception as e:
                 logger.error(f"Error switching to previous picture: {e}")
                 return jsonify({"status": "error", "message": str(e)}), 500
@@ -3554,7 +3646,9 @@ class BecaTicker:
 
                 # Update both displays (draws to the canvas)
                 self.text_display.update_display()
-                self.clock_display.update_display(self.arcade_manager, self.picture_viewer)
+                self.clock_display.update_display(
+                    self.arcade_manager, self.picture_viewer
+                )
 
                 # Swap the canvas buffers once
                 canvas = self.matrix.SwapOnVSync(canvas)

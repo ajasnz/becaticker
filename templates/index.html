@@ -658,7 +658,7 @@
             <!-- Picture Viewer Controls -->
             <div class="section">
                 <h2>🖼️ Picture Viewer</h2>
-                
+
                 <!-- Upload Section -->
                 <div style="margin-bottom: 20px;">
                     <h3>Upload Images</h3>
@@ -678,17 +678,22 @@
                 </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
-                    <button class="btn" id="picture-start-btn" onclick="startPictureViewer()" disabled>🖼️ Start Viewer</button>
-                    <button class="btn btn-secondary" id="picture-stop-btn" onclick="stopPictureViewer()" disabled>⏹️ Stop Viewer</button>
+                    <button class="btn" id="picture-start-btn" onclick="startPictureViewer()" disabled>🖼️ Start
+                        Viewer</button>
+                    <button class="btn btn-secondary" id="picture-stop-btn" onclick="stopPictureViewer()" disabled>⏹️
+                        Stop Viewer</button>
                 </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
-                    <button class="btn btn-secondary" id="slideshow-start-btn" onclick="startSlideshow()" disabled>▶️ Start Slideshow</button>
-                    <button class="btn btn-secondary" id="slideshow-stop-btn" onclick="stopSlideshow()" disabled>⏹️ Stop Slideshow</button>
+                    <button class="btn btn-secondary" id="slideshow-start-btn" onclick="startSlideshow()" disabled>▶️
+                        Start Slideshow</button>
+                    <button class="btn btn-secondary" id="slideshow-stop-btn" onclick="stopSlideshow()" disabled>⏹️ Stop
+                        Slideshow</button>
                 </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px;">
-                    <button class="btn btn-secondary" onclick="previousImage()" disabled id="prev-btn">⬅️ Previous</button>
+                    <button class="btn btn-secondary" onclick="previousImage()" disabled id="prev-btn">⬅️
+                        Previous</button>
                     <button class="btn btn-secondary" onclick="checkPictureStatus()">🔄 Refresh</button>
                     <button class="btn btn-secondary" onclick="nextImage()" disabled id="next-btn">➡️ Next</button>
                 </div>
@@ -696,13 +701,15 @@
                 <!-- Image Gallery -->
                 <div style="margin-top: 20px;">
                     <h3>Image Gallery <span id="image-count">(0 images)</span></h3>
-                    <div id="image-gallery" style="max-height: 300px; overflow-y: auto; border: 1px solid #333; border-radius: 5px; padding: 10px;">
+                    <div id="image-gallery"
+                        style="max-height: 300px; overflow-y: auto; border: 1px solid #333; border-radius: 5px; padding: 10px;">
                         <p style="text-align: center; color: #6c757d;">Loading images...</p>
                     </div>
                 </div>
 
                 <p style="margin-top: 15px; color: #6c757d; font-size: 0.9rem;">
-                    <strong>Note:</strong> Picture viewer will temporarily replace the clock display. Arcade mode takes priority over picture viewer.
+                    <strong>Note:</strong> Picture viewer will temporarily replace the clock display. Arcade mode takes
+                    priority over picture viewer.
                 </p>
             </div>
 
@@ -1975,7 +1982,7 @@
                 const data = await response.json();
                 const gallery = document.getElementById('image-gallery');
                 const imageCount = document.getElementById('image-count');
-                
+
                 imageCount.textContent = `(${data.images.length} images)`;
 
                 if (data.images.length === 0) {
@@ -1984,11 +1991,11 @@
                 }
 
                 let html = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px;">';
-                
+
                 data.images.forEach(img => {
                     const size = (img.size / 1024 / 1024).toFixed(2);
                     const date = new Date(img.modified * 1000).toLocaleDateString();
-                    
+
                     html += `
                         <div style="border: 1px solid #444; border-radius: 5px; padding: 10px; background-color: #1a1a1a;">
                             <div style="font-weight: bold; margin-bottom: 5px; word-break: break-word;">${img.filename}</div>
@@ -2003,7 +2010,7 @@
                         </div>
                     `;
                 });
-                
+
                 html += '</div>';
                 gallery.innerHTML = html;
 
@@ -2017,7 +2024,7 @@
             try {
                 const fileInput = document.getElementById('imageUpload');
                 const file = fileInput.files[0];
-                
+
                 if (!file) {
                     showAlert('Please select an image file first.', 'error');
                     return;
@@ -2027,14 +2034,14 @@
                 formData.append('file', file);
 
                 showAlert('Uploading image...');
-                
+
                 const response = await fetch('/api/pictures/upload', {
                     method: 'POST',
                     body: formData
                 });
 
                 const result = await response.json();
-                
+
                 if (response.ok) {
                     showAlert('Image uploaded successfully!');
                     fileInput.value = ''; // Clear the file input
@@ -2064,7 +2071,7 @@
                 });
 
                 const result = await response.json();
-                
+
                 if (response.ok) {
                     showAlert('Image deleted successfully!');
                     checkPictureStatus(); // Refresh the gallery
@@ -2081,9 +2088,9 @@
         async function startPictureViewer(filename = null) {
             try {
                 showAlert('Starting picture viewer...');
-                
+
                 const body = filename ? JSON.stringify({ filename: filename }) : JSON.stringify({});
-                
+
                 const response = await fetch('/api/pictures/start', {
                     method: 'POST',
                     headers: {
