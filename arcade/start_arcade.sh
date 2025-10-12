@@ -85,7 +85,18 @@ EOF
         
         # Start Python arcade interface (this will integrate with the LED matrix)
         echo "Launching arcade interface..."
-        python3 -c "
+        
+        # Use the virtual environment if it exists
+        if [ -d "$BECATICKER_DIR/venv" ]; then
+            echo "Using virtual environment..."
+            source "$BECATICKER_DIR/venv/bin/activate"
+            PYTHON_CMD="python"
+        else
+            echo "No virtual environment found, using system python3..."
+            PYTHON_CMD="python3"
+        fi
+        
+        $PYTHON_CMD -c "
 import sys
 sys.path.append('$BECATICKER_DIR')
 import json
@@ -119,7 +130,15 @@ except KeyboardInterrupt:
         echo "Arcade mode running in demo mode (no ROMs available)"
         
         # Demo mode - just show arcade is active
-        python3 -c "
+        # Use the same Python environment as above
+        if [ -d "$BECATICKER_DIR/venv" ]; then
+            source "$BECATICKER_DIR/venv/bin/activate"
+            PYTHON_CMD="python"
+        else
+            PYTHON_CMD="python3"
+        fi
+        
+        $PYTHON_CMD -c "
 import time
 print('Arcade Demo Mode - No ROMs found')
 print('Add ROM files to $ROM_DIR to enable games')
