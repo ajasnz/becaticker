@@ -14,6 +14,7 @@ import logging
 import math
 import os
 import secrets
+import signal
 import subprocess
 import sys
 import threading
@@ -131,6 +132,13 @@ class Config:
                     "smooth_seconds": True,  # Smooth second hand movement
                     "glow_effect": False,  # Subtle glow around hands
                     "fade_old_position": True,  # Fade effect when hands move
+                },
+                "arcade_mode": {
+                    "enabled": False,
+                    "rom_directory": "/home/pi/RetroPie/roms",
+                    "emulator_command": "/opt/retropie/supplementary/emulationstation/emulationstation",
+                    "display_resolution": "128x128",
+                    "auto_return_timeout": 300,  # Return to clock after 5 minutes of inactivity
                 },
             },
             "clock_settings": {
@@ -329,6 +337,147 @@ class CalendarManager:
 
         logger.info(f"Updated calendar with {len(self.events)} events")
         return self.events
+
+
+class ArcadeManager:
+    """Manages arcade mode functionality with RetroPie integration."""
+
+    def __init__(self, config: Config):
+        self.config = config
+        self.arcade_process = None
+        self.arcade_active = False
+        self.last_activity = time.time()
+        self.rom_directory = self.config.get(
+            "second_display.arcade_mode.rom_directory", "/home/pi/RetroPie/roms"
+        )
+
+    def is_retropie_installed(self) -> bool:
+        """Check if RetroPie is installed and configured."""
+        retropie_dirs = ["/opt/RetroPie-Setup", "/opt/retropie", "/home/pi/RetroPie"]
+        return any(os.path.exists(d) for d in retropie_dirs)
+
+    def get_available_roms(self) -> Dict[str, List[str]]:
+        """Get list of available ROM files by system."""
+        roms = {}
+        if not os.path.exists(self.rom_directory):
+            return roms
+
+        try:
+            for system_dir in os.listdir(self.rom_directory):
+                system_path = os.path.join(self.rom_directory, system_dir)
+                if os.path.isdir(system_path):
+                    rom_files = []
+                    for file in os.listdir(system_path):
+                        if file.lower().endswith(
+                            (".zip", ".nes", ".gb", ".gbc", ".smc", ".sfc")
+                        ):
+                            rom_files.append(file)
+                    if rom_files:
+                        roms[system_dir] = sorted(rom_files)
+        except Exception as e:
+            logger.error(f"Error scanning ROMs: {e}")
+
+        return roms
+
+    def start_arcade_mode(self) -> bool:
+        """Start arcade mode."""
+        if self.arcade_active:
+            logger.info("Arcade mode already active")
+            return True
+
+        if not self.is_retropie_installed():
+            logger.error("RetroPie not installed - cannot start arcade mode")
+            return False
+
+        roms = self.get_available_roms()
+        if not roms:
+            logger.error("No ROMs found - cannot start arcade mode")
+            return False
+
+        try:
+            # Start EmulationStation for the LED matrix
+            arcade_script = os.path.join(
+                os.path.dirname(__file__), "arcade", "start_arcade.sh"
+            )
+            if os.path.exists(arcade_script):
+                self.arcade_process = subprocess.Popen(
+                    [arcade_script],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    preexec_fn=os.setsid,
+                )
+                self.arcade_active = True
+                self.last_activity = time.time()
+                logger.info("Arcade mode started successfully")
+                return True
+            else:
+                logger.error(f"Arcade script not found: {arcade_script}")
+                return False
+
+        except Exception as e:
+            logger.error(f"Failed to start arcade mode: {e}")
+            return False
+
+    def stop_arcade_mode(self) -> bool:
+        """Stop arcade mode."""
+        if not self.arcade_active:
+            logger.info("Arcade mode not active")
+            return True
+
+        try:
+            # Stop EmulationStation and all emulators
+            stop_script = os.path.join(
+                os.path.dirname(__file__), "arcade", "stop_arcade.sh"
+            )
+            if os.path.exists(stop_script):
+                subprocess.run([stop_script], check=True)
+
+            if self.arcade_process:
+                try:
+                    os.killpg(os.getpgid(self.arcade_process.pid), signal.SIGTERM)
+                except ProcessLookupError:
+                    pass  # Process already terminated
+                self.arcade_process = None
+
+            self.arcade_active = False
+            logger.info("Arcade mode stopped successfully")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to stop arcade mode: {e}")
+            return False
+
+    def check_status(self) -> Dict:
+        """Check arcade mode status."""
+        status = {
+            "active": self.arcade_active,
+            "retropie_installed": self.is_retropie_installed(),
+            "roms_available": len(self.get_available_roms()),
+            "last_activity": self.last_activity,
+        }
+
+        # Check if arcade process is still running
+        if self.arcade_active and self.arcade_process:
+            if self.arcade_process.poll() is not None:
+                # Process has terminated
+                self.arcade_active = False
+                self.arcade_process = None
+                status["active"] = False
+                logger.info("Arcade process terminated, updating status")
+
+        return status
+
+    def update_activity(self):
+        """Update last activity timestamp."""
+        self.last_activity = time.time()
+
+    def should_auto_return(self) -> bool:
+        """Check if arcade mode should auto-return to clock due to inactivity."""
+        if not self.arcade_active:
+            return False
+
+        timeout = self.config.get("second_display.arcade_mode.auto_return_timeout", 300)
+        return time.time() - self.last_activity > timeout
 
 
 class TextDisplay:
@@ -949,13 +1098,18 @@ class ClockDisplay:
             "ticks": graphics.Color(*clock_config.get("tick_color", [128, 128, 128])),
         }
 
-    def update_display(self) -> None:
-        """Update the clock display with current time."""
+    def update_display(self, arcade_manager=None) -> None:
+        """Update the clock display with current time, or show arcade mode status."""
         if not self.canvas:
             return
 
         # Check if second display is enabled
         if not self.config.get("second_display.enabled", False):
+            return
+
+        # Check if arcade mode is active
+        if arcade_manager and arcade_manager.arcade_active:
+            self._draw_arcade_mode_status(arcade_manager)
             return
 
         # Get current time
@@ -969,6 +1123,11 @@ class ClockDisplay:
 
         if display_type == "test":
             self._draw_test_pattern(colors)
+        elif display_type == "arcade":
+            if arcade_manager:
+                self._draw_arcade_selection(arcade_manager, colors)
+            else:
+                self._draw_arcade_unavailable(colors)
         elif display_type == "clock":
             self._draw_analog_clock(colors, now)
 
@@ -1823,6 +1982,123 @@ class ClockDisplay:
                 self.canvas, self.small_font, text_x, text_y, colors["date"], date_str
             )
 
+    def _draw_arcade_mode_status(self, arcade_manager) -> None:
+        """Draw arcade mode status when arcade is running."""
+        # Clear the display area with a dark background
+        bg_color = graphics.Color(16, 16, 32)
+        for x in range(self.width):
+            for y in range(self.height):
+                self._set_pixel(x, y, bg_color)
+
+        # Draw "ARCADE MODE" text
+        text_color = graphics.Color(0, 255, 0)  # Green
+        text = "ARCADE"
+        text_x = self.center_x - len(text) * 3
+        text_y = self.center_y - 10
+        graphics.DrawText(
+            self.canvas, self.small_font, text_x, text_y, text_color, text
+        )
+
+        text = "ACTIVE"
+        text_x = self.center_x - len(text) * 3
+        text_y = self.center_y + 5
+        graphics.DrawText(
+            self.canvas, self.small_font, text_x, text_y, text_color, text
+        )
+
+        # Draw activity indicator (blinking dot)
+        if int(time.time() * 2) % 2:  # Blink every 0.5 seconds
+            indicator_color = graphics.Color(255, 0, 0)  # Red
+            self._draw_circle(
+                self.center_x + 30, self.center_y, 3, indicator_color, fill=True
+            )
+
+    def _draw_arcade_selection(self, arcade_manager, colors: dict) -> None:
+        """Draw arcade mode ROM selection interface."""
+        roms = arcade_manager.get_available_roms()
+
+        if not roms:
+            self._draw_arcade_unavailable(colors)
+            return
+
+        # Clear background
+        bg_color = graphics.Color(0, 16, 32)
+        for x in range(self.width):
+            for y in range(self.height):
+                self._set_pixel(x, y, bg_color)
+
+        # Draw title
+        title_color = graphics.Color(255, 255, 0)
+        text = "ARCADE"
+        text_x = self.center_x - len(text) * 3
+        text_y = 15
+        graphics.DrawText(
+            self.canvas, self.small_font, text_x, text_y, title_color, text
+        )
+
+        # Show ROM count
+        total_roms = sum(len(rom_list) for rom_list in roms.values())
+        rom_text = f"{total_roms} ROMs"
+        text_x = self.center_x - len(rom_text) * 3
+        text_y = 30
+        graphics.DrawText(
+            self.canvas, self.small_font, text_x, text_y, colors["digital"], rom_text
+        )
+
+        # Show systems available
+        y_pos = 50
+        for system, rom_list in list(roms.items())[:3]:  # Show first 3 systems
+            system_text = f"{system.upper()}: {len(rom_list)}"
+            text_x = 5
+            graphics.DrawText(
+                self.canvas,
+                self.small_font,
+                text_x,
+                y_pos,
+                colors["markers"],
+                system_text,
+            )
+            y_pos += 15
+
+        # Draw instruction
+        instruction = "Web UI to start"
+        text_x = self.center_x - len(instruction) * 3
+        text_y = self.height - 15
+        graphics.DrawText(
+            self.canvas, self.small_font, text_x, text_y, colors["date"], instruction
+        )
+
+    def _draw_arcade_unavailable(self, colors: dict) -> None:
+        """Draw message when arcade mode is not available."""
+        # Clear background
+        bg_color = graphics.Color(32, 16, 16)
+        for x in range(self.width):
+            for y in range(self.height):
+                self._set_pixel(x, y, bg_color)
+
+        # Draw error message
+        error_color = graphics.Color(255, 128, 128)
+        text = "ARCADE"
+        text_x = self.center_x - len(text) * 3
+        text_y = self.center_y - 15
+        graphics.DrawText(
+            self.canvas, self.small_font, text_x, text_y, error_color, text
+        )
+
+        text = "UNAVAILABLE"
+        text_x = self.center_x - len(text) * 3
+        text_y = self.center_y
+        graphics.DrawText(
+            self.canvas, self.small_font, text_x, text_y, error_color, text
+        )
+
+        text = "No ROMs found"
+        text_x = self.center_x - len(text) * 3
+        text_y = self.center_y + 15
+        graphics.DrawText(
+            self.canvas, self.small_font, text_x, text_y, colors["date"], text
+        )
+
 
 class UserManager:
     """Manages user authentication with hashed passwords and JSON storage."""
@@ -2001,6 +2277,7 @@ class BecaTicker:
         self.config = Config()
         self.user_manager = UserManager()
         self.calendar_manager = CalendarManager(self.config)
+        self.arcade_manager = ArcadeManager(self.config)
 
         # Initialize single chain matrix with 5x1 text panels
         self.matrix = self._create_matrix()
@@ -2349,6 +2626,93 @@ class BecaTicker:
             else:
                 return redirect("/login")
 
+        # Arcade Mode API Routes
+        @self.app.route("/api/arcade/status", methods=["GET"])
+        @login_required
+        def get_arcade_status():
+            try:
+                status = self.arcade_manager.check_status()
+                roms = self.arcade_manager.get_available_roms()
+
+                return jsonify(
+                    {
+                        "status": "success",
+                        "arcade": {
+                            "active": status["active"],
+                            "retropie_installed": status["retropie_installed"],
+                            "roms_available": status["roms_available"],
+                            "available_systems": list(roms.keys()),
+                            "rom_details": roms,
+                        },
+                    }
+                )
+            except Exception as e:
+                logger.error(f"Error getting arcade status: {e}")
+                return jsonify({"status": "error", "message": str(e)}), 500
+
+        @self.app.route("/api/arcade/start", methods=["POST"])
+        @login_required
+        def start_arcade():
+            try:
+                if self.arcade_manager.start_arcade_mode():
+                    return jsonify(
+                        {
+                            "status": "success",
+                            "message": "Arcade mode started successfully",
+                        }
+                    )
+                else:
+                    return (
+                        jsonify(
+                            {
+                                "status": "error",
+                                "message": "Failed to start arcade mode",
+                            }
+                        ),
+                        400,
+                    )
+            except Exception as e:
+                logger.error(f"Error starting arcade mode: {e}")
+                return jsonify({"status": "error", "message": str(e)}), 500
+
+        @self.app.route("/api/arcade/stop", methods=["POST"])
+        @login_required
+        def stop_arcade():
+            try:
+                if self.arcade_manager.stop_arcade_mode():
+                    return jsonify(
+                        {
+                            "status": "success",
+                            "message": "Arcade mode stopped successfully",
+                        }
+                    )
+                else:
+                    return (
+                        jsonify(
+                            {"status": "error", "message": "Failed to stop arcade mode"}
+                        ),
+                        400,
+                    )
+            except Exception as e:
+                logger.error(f"Error stopping arcade mode: {e}")
+                return jsonify({"status": "error", "message": str(e)}), 500
+
+        @self.app.route("/api/arcade/roms", methods=["GET"])
+        @login_required
+        def get_roms():
+            try:
+                roms = self.arcade_manager.get_available_roms()
+                return jsonify(
+                    {
+                        "status": "success",
+                        "roms": roms,
+                        "total_roms": sum(len(rom_list) for rom_list in roms.values()),
+                    }
+                )
+            except Exception as e:
+                logger.error(f"Error getting ROMs: {e}")
+                return jsonify({"status": "error", "message": str(e)}), 500
+
         @self.app.route("/api/auth/status")
         def auth_status():
             authenticated = session.get("authenticated", False)
@@ -2534,7 +2898,7 @@ class BecaTicker:
 
                 # Update both displays (draws to the canvas)
                 self.text_display.update_display()
-                self.clock_display.update_display()
+                self.clock_display.update_display(self.arcade_manager)
 
                 # Swap the canvas buffers once
                 canvas = self.matrix.SwapOnVSync(canvas)
