@@ -362,12 +362,12 @@ class ArcadeManager:
         self.arcade_process = None
         self.arcade_active = False
         self.last_activity = time.time()
-        
+
         # Get ROM directory from config, with fallbacks for development
         default_rom_dir = self.config.get(
             "second_display.arcade_mode.rom_directory", "/home/becaticker/RetroPie/roms"
         )
-        
+
         # For development, use local test ROM directory if default doesn't exist
         if not os.path.exists(default_rom_dir):
             test_rom_dir = os.path.join(os.path.dirname(__file__), "test_roms")
@@ -376,32 +376,34 @@ class ArcadeManager:
                 logger.info(f"Using development ROM directory: {test_rom_dir}")
             else:
                 self.rom_directory = default_rom_dir
-                logger.warning(f"Using default ROM directory (may not exist): {default_rom_dir}")
+                logger.warning(
+                    f"Using default ROM directory (may not exist): {default_rom_dir}"
+                )
         else:
             self.rom_directory = default_rom_dir
 
     def is_retropie_installed(self) -> bool:
         """Check if RetroPie is installed and configured."""
         retropie_dirs = [
-            "/opt/RetroPie-Setup", 
-            "/opt/retropie", 
+            "/opt/RetroPie-Setup",
+            "/opt/retropie",
             "/home/becaticker/RetroPie",
-            "/home/pi/RetroPie"  # Keep pi as fallback
+            "/home/pi/RetroPie",  # Keep pi as fallback
         ]
         is_installed = any(os.path.exists(d) for d in retropie_dirs)
-        
+
         # For development mode, if we're using test ROMs, consider RetroPie "installed"
         if not is_installed and "test_roms" in self.rom_directory:
             logger.info("Development mode: Skipping RetroPie installation check")
             return True
-            
+
         return is_installed
 
     def get_available_roms(self) -> Dict[str, List[str]]:
         """Get list of available ROM files by system."""
         roms = {}
         logger.debug(f"Scanning ROM directory: {self.rom_directory}")
-        
+
         if not os.path.exists(self.rom_directory):
             logger.warning(f"ROM directory does not exist: {self.rom_directory}")
             return roms
@@ -409,7 +411,7 @@ class ArcadeManager:
         try:
             system_dirs = os.listdir(self.rom_directory)
             logger.debug(f"Found {len(system_dirs)} potential system directories")
-            
+
             for system_dir in system_dirs:
                 system_path = os.path.join(self.rom_directory, system_dir)
                 if os.path.isdir(system_path):
@@ -418,21 +420,30 @@ class ArcadeManager:
                         files = os.listdir(system_path)
                         for file in files:
                             if file.lower().endswith(
-                                (".zip", ".nes", ".gb", ".gbc", ".smc", ".sfc", ".bin", ".rom")
+                                (
+                                    ".zip",
+                                    ".nes",
+                                    ".gb",
+                                    ".gbc",
+                                    ".smc",
+                                    ".sfc",
+                                    ".bin",
+                                    ".rom",
+                                )
                             ):
                                 rom_files.append(file)
-                        
+
                         if rom_files:
                             roms[system_dir] = sorted(rom_files)
                             logger.debug(f"Found {len(rom_files)} ROMs in {system_dir}")
                         else:
                             logger.debug(f"No ROMs found in {system_dir}")
-                            
+
                     except PermissionError:
                         logger.warning(f"Permission denied accessing {system_path}")
                     except Exception as e:
                         logger.warning(f"Error scanning {system_path}: {e}")
-                        
+
         except Exception as e:
             logger.error(f"Error scanning ROM directory {self.rom_directory}: {e}")
 
@@ -443,7 +454,7 @@ class ArcadeManager:
     def start_arcade_mode(self) -> bool:
         """Start arcade mode."""
         logger.info("Starting arcade mode...")
-        
+
         if self.arcade_active:
             logger.info("Arcade mode already active")
             return True
@@ -469,12 +480,14 @@ class ArcadeManager:
             os.path.dirname(__file__), "arcade", "start_arcade.sh"
         )
         logger.info(f"Looking for arcade script: {arcade_script}")
-        
+
         if not os.path.exists(arcade_script):
             logger.error(f"Arcade script not found: {arcade_script}")
-            logger.error("Run setup.sh to create arcade scripts, or create the arcade directory manually")
+            logger.error(
+                "Run setup.sh to create arcade scripts, or create the arcade directory manually"
+            )
             return False
-        
+
         # Check if script is executable
         if not os.access(arcade_script, os.X_OK):
             logger.error(f"Arcade script not executable: {arcade_script}")
@@ -490,10 +503,10 @@ class ArcadeManager:
                 stderr=subprocess.PIPE,
                 preexec_fn=os.setsid,
             )
-            
+
             # Give the process a moment to start
             time.sleep(1)
-            
+
             # Check if process started successfully
             if self.arcade_process.poll() is None:
                 self.arcade_active = True
