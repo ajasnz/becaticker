@@ -655,6 +655,57 @@
                 </p>
             </div>
 
+            <!-- Picture Viewer Controls -->
+            <div class="section">
+                <h2>🖼️ Picture Viewer</h2>
+                
+                <!-- Upload Section -->
+                <div style="margin-bottom: 20px;">
+                    <h3>Upload Images</h3>
+                    <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
+                        <input type="file" id="imageUpload" accept="image/*" style="flex: 1;">
+                        <button class="btn" onclick="uploadImage()">📤 Upload</button>
+                    </div>
+                    <p style="color: #6c757d; font-size: 0.8rem;">
+                        Supported formats: JPG, PNG, BMP, GIF. Max size: 10MB
+                    </p>
+                </div>
+
+                <!-- Status and Controls -->
+                <div class="status-item" style="margin-bottom: 20px;">
+                    <div class="status-value" id="picture-status">Unknown</div>
+                    <div class="status-label">Picture Status</div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                    <button class="btn" id="picture-start-btn" onclick="startPictureViewer()" disabled>🖼️ Start Viewer</button>
+                    <button class="btn btn-secondary" id="picture-stop-btn" onclick="stopPictureViewer()" disabled>⏹️ Stop Viewer</button>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                    <button class="btn btn-secondary" id="slideshow-start-btn" onclick="startSlideshow()" disabled>▶️ Start Slideshow</button>
+                    <button class="btn btn-secondary" id="slideshow-stop-btn" onclick="stopSlideshow()" disabled>⏹️ Stop Slideshow</button>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                    <button class="btn btn-secondary" onclick="previousImage()" disabled id="prev-btn">⬅️ Previous</button>
+                    <button class="btn btn-secondary" onclick="checkPictureStatus()">🔄 Refresh</button>
+                    <button class="btn btn-secondary" onclick="nextImage()" disabled id="next-btn">➡️ Next</button>
+                </div>
+
+                <!-- Image Gallery -->
+                <div style="margin-top: 20px;">
+                    <h3>Image Gallery <span id="image-count">(0 images)</span></h3>
+                    <div id="image-gallery" style="max-height: 300px; overflow-y: auto; border: 1px solid #333; border-radius: 5px; padding: 10px;">
+                        <p style="text-align: center; color: #6c757d;">Loading images...</p>
+                    </div>
+                </div>
+
+                <p style="margin-top: 15px; color: #6c757d; font-size: 0.9rem;">
+                    <strong>Note:</strong> Picture viewer will temporarily replace the clock display. Arcade mode takes priority over picture viewer.
+                </p>
+            </div>
+
             <!-- User Management (Admin Only) -->
             <div class="section" id="userManagementSection" style="display: none;">
                 <h2>👥 User Management</h2>
@@ -1020,9 +1071,11 @@
             refreshEvents();
             updateClock();
             checkArcadeStatus();
+            checkPictureStatus();
             setInterval(updateClock, 1000);
             setInterval(refreshEvents, 30000); // Refresh events every 30 seconds
             setInterval(checkArcadeStatus, 5000); // Check arcade status every 5 seconds
+            setInterval(checkPictureStatus, 5000); // Check picture status every 5 seconds
         });
 
         function updateClock() {
@@ -1861,6 +1914,297 @@
             } catch (error) {
                 console.error('Error stopping arcade mode:', error);
                 showAlert('Failed to stop arcade mode: ' + error.message, 'error');
+            }
+        }
+
+        // Picture Viewer Functions
+        async function checkPictureStatus() {
+            try {
+                const response = await fetch('/api/pictures/status');
+                if (!response.ok) throw new Error('Failed to check picture status');
+
+                const status = await response.json();
+                const statusElement = document.getElementById('picture-status');
+                const startBtn = document.getElementById('picture-start-btn');
+                const stopBtn = document.getElementById('picture-stop-btn');
+                const slideshowStartBtn = document.getElementById('slideshow-start-btn');
+                const slideshowStopBtn = document.getElementById('slideshow-stop-btn');
+                const prevBtn = document.getElementById('prev-btn');
+                const nextBtn = document.getElementById('next-btn');
+
+                if (status.active) {
+                    statusElement.textContent = status.slideshow_active ? 'Slideshow Active' : 'Viewing Image';
+                    statusElement.style.color = '#28a745';
+                    startBtn.disabled = true;
+                    stopBtn.disabled = false;
+                    slideshowStartBtn.disabled = status.slideshow_active;
+                    slideshowStopBtn.disabled = !status.slideshow_active;
+                    prevBtn.disabled = false;
+                    nextBtn.disabled = false;
+                } else {
+                    statusElement.textContent = 'Inactive';
+                    statusElement.style.color = '#6c757d';
+                    startBtn.disabled = status.total_images === 0;
+                    stopBtn.disabled = true;
+                    slideshowStartBtn.disabled = status.total_images < 2;
+                    slideshowStopBtn.disabled = true;
+                    prevBtn.disabled = true;
+                    nextBtn.disabled = true;
+                }
+
+                // Enable/disable buttons based on configuration
+                if (!status.enabled) {
+                    startBtn.disabled = true;
+                    startBtn.title = 'Picture viewer is disabled in configuration';
+                }
+
+                // Update image gallery
+                loadImageGallery();
+
+            } catch (error) {
+                console.error('Error checking picture status:', error);
+                document.getElementById('picture-status').textContent = 'Error';
+            }
+        }
+
+        async function loadImageGallery() {
+            try {
+                const response = await fetch('/api/pictures/list');
+                if (!response.ok) throw new Error('Failed to load images');
+
+                const data = await response.json();
+                const gallery = document.getElementById('image-gallery');
+                const imageCount = document.getElementById('image-count');
+                
+                imageCount.textContent = `(${data.images.length} images)`;
+
+                if (data.images.length === 0) {
+                    gallery.innerHTML = '<p style="text-align: center; color: #6c757d;">No images uploaded yet.</p>';
+                    return;
+                }
+
+                let html = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px;">';
+                
+                data.images.forEach(img => {
+                    const size = (img.size / 1024 / 1024).toFixed(2);
+                    const date = new Date(img.modified * 1000).toLocaleDateString();
+                    
+                    html += `
+                        <div style="border: 1px solid #444; border-radius: 5px; padding: 10px; background-color: #1a1a1a;">
+                            <div style="font-weight: bold; margin-bottom: 5px; word-break: break-word;">${img.filename}</div>
+                            <div style="font-size: 0.8rem; color: #6c757d; margin-bottom: 10px;">
+                                ${img.width}×${img.height} • ${size}MB<br>
+                                ${date}
+                            </div>
+                            <div style="display: flex; gap: 5px;">
+                                <button class="btn btn-sm" onclick="startPictureViewer('${img.filename}')" style="flex: 1;">View</button>
+                                <button class="btn btn-secondary btn-sm" onclick="deleteImage('${img.filename}')" style="background-color: #dc3545;">Delete</button>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+                gallery.innerHTML = html;
+
+            } catch (error) {
+                console.error('Error loading image gallery:', error);
+                document.getElementById('image-gallery').innerHTML = '<p style="text-align: center; color: #dc3545;">Error loading images.</p>';
+            }
+        }
+
+        async function uploadImage() {
+            try {
+                const fileInput = document.getElementById('imageUpload');
+                const file = fileInput.files[0];
+                
+                if (!file) {
+                    showAlert('Please select an image file first.', 'error');
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('file', file);
+
+                showAlert('Uploading image...');
+                
+                const response = await fetch('/api/pictures/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showAlert('Image uploaded successfully!');
+                    fileInput.value = ''; // Clear the file input
+                    checkPictureStatus(); // Refresh the gallery
+                } else {
+                    showAlert('Upload failed: ' + result.message, 'error');
+                }
+
+            } catch (error) {
+                console.error('Error uploading image:', error);
+                showAlert('Upload failed: ' + error.message, 'error');
+            }
+        }
+
+        async function deleteImage(filename) {
+            try {
+                if (!confirm(`Are you sure you want to delete "${filename}"?`)) {
+                    return;
+                }
+
+                const response = await fetch('/api/pictures/delete', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ filename: filename })
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showAlert('Image deleted successfully!');
+                    checkPictureStatus(); // Refresh the gallery
+                } else {
+                    showAlert('Delete failed: ' + result.message, 'error');
+                }
+
+            } catch (error) {
+                console.error('Error deleting image:', error);
+                showAlert('Delete failed: ' + error.message, 'error');
+            }
+        }
+
+        async function startPictureViewer(filename = null) {
+            try {
+                showAlert('Starting picture viewer...');
+                
+                const body = filename ? JSON.stringify({ filename: filename }) : JSON.stringify({});
+                
+                const response = await fetch('/api/pictures/start', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: body
+                });
+
+                if (!response.ok) throw new Error('Failed to start picture viewer');
+
+                const result = await response.json();
+                showAlert('Picture viewer started successfully!');
+                checkPictureStatus();
+
+            } catch (error) {
+                console.error('Error starting picture viewer:', error);
+                showAlert('Failed to start picture viewer: ' + error.message, 'error');
+            }
+        }
+
+        async function stopPictureViewer() {
+            try {
+                showAlert('Stopping picture viewer...');
+                const response = await fetch('/api/pictures/stop', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                if (!response.ok) throw new Error('Failed to stop picture viewer');
+
+                const result = await response.json();
+                showAlert('Picture viewer stopped. Clock display has been restored.');
+                checkPictureStatus();
+
+            } catch (error) {
+                console.error('Error stopping picture viewer:', error);
+                showAlert('Failed to stop picture viewer: ' + error.message, 'error');
+            }
+        }
+
+        async function startSlideshow() {
+            try {
+                showAlert('Starting slideshow...');
+                const response = await fetch('/api/pictures/slideshow/start', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                if (!response.ok) throw new Error('Failed to start slideshow');
+
+                const result = await response.json();
+                showAlert('Slideshow started successfully!');
+                checkPictureStatus();
+
+            } catch (error) {
+                console.error('Error starting slideshow:', error);
+                showAlert('Failed to start slideshow: ' + error.message, 'error');
+            }
+        }
+
+        async function stopSlideshow() {
+            try {
+                showAlert('Stopping slideshow...');
+                const response = await fetch('/api/pictures/slideshow/stop', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                if (!response.ok) throw new Error('Failed to stop slideshow');
+
+                const result = await response.json();
+                showAlert('Slideshow stopped.');
+                checkPictureStatus();
+
+            } catch (error) {
+                console.error('Error stopping slideshow:', error);
+                showAlert('Failed to stop slideshow: ' + error.message, 'error');
+            }
+        }
+
+        async function nextImage() {
+            try {
+                const response = await fetch('/api/pictures/next', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                if (!response.ok) throw new Error('Failed to switch image');
+
+                checkPictureStatus();
+
+            } catch (error) {
+                console.error('Error switching to next image:', error);
+                showAlert('Failed to switch image: ' + error.message, 'error');
+            }
+        }
+
+        async function previousImage() {
+            try {
+                const response = await fetch('/api/pictures/previous', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                if (!response.ok) throw new Error('Failed to switch image');
+
+                checkPictureStatus();
+
+            } catch (error) {
+                console.error('Error switching to previous image:', error);
+                showAlert('Failed to switch image: ' + error.message, 'error');
             }
         }
 

@@ -28,6 +28,9 @@ from dateutil import parser as date_parser
 from flask import Flask, jsonify, render_template, request, session, redirect, url_for
 from icalendar import Calendar
 from PIL import Image, ImageDraw, ImageFont
+from werkzeug.utils import secure_filename
+import io
+import glob
 
 # Add the RGB matrix library path
 sys.path.append(
@@ -139,6 +142,18 @@ class Config:
                     "emulator_command": "/opt/retropie/supplementary/emulationstation/emulationstation",
                     "display_resolution": "128x128",
                     "auto_return_timeout": 300,  # Return to clock after 5 minutes of inactivity
+                },
+                "picture_viewer": {
+                    "enabled": True,
+                    "image_directory": "images/",
+                    "slideshow_enabled": False,
+                    "slideshow_interval": 10,  # seconds between images in slideshow
+                    "fit_mode": "contain",  # "contain", "cover", "stretch", "center"
+                    "background_color": [0, 0, 0],  # background color for letterboxing
+                    "brightness_adjustment": 1.0,  # 0.0 to 2.0 brightness multiplier
+                    "auto_rotate": True,  # rotate based on EXIF data
+                    "max_file_size": 10485760,  # 10MB max file size
+                    "supported_formats": ["jpg", "jpeg", "png", "bmp", "gif"],
                 },
             },
             "clock_settings": {
@@ -478,6 +493,372 @@ class ArcadeManager:
 
         timeout = self.config.get("second_display.arcade_mode.auto_return_timeout", 300)
         return time.time() - self.last_activity > timeout
+
+
+class PictureViewer:
+    """Manages picture viewing functionality for the 2x2 display."""
+
+    def __init__(self, config: Config):
+        self.config = config
+        self.picture_active = False
+        self.current_image = None
+        self.slideshow_active = False
+        self.slideshow_thread = None
+        self.image_list = []
+        self.current_index = 0
+        self.last_update = 0
+        
+        # Create images directory if it doesn't exist
+        self.image_dir = os.path.abspath(
+            self.config.get("second_display.picture_viewer.image_directory", "images/")
+        )
+        os.makedirs(self.image_dir, exist_ok=True)
+        logger.info(f"Picture viewer initialized with directory: {self.image_dir}")
+
+    def get_image_directory(self) -> str:
+        """Get the absolute path to the image directory."""
+        return self.image_dir
+
+    def get_uploaded_images(self) -> List[Dict]:
+        """Get list of uploaded images with metadata."""
+        images = []
+        settings = self.config.get("second_display.picture_viewer", {})
+        supported_formats = settings.get("supported_formats", ["jpg", "jpeg", "png", "bmp", "gif"])
+        
+        try:
+            for ext in supported_formats:
+                pattern = os.path.join(self.image_dir, f"*.{ext}")
+                for filepath in glob.glob(pattern, recursive=False):
+                    try:
+                        stat = os.stat(filepath)
+                        filename = os.path.basename(filepath)
+                        
+                        # Get image dimensions
+                        with Image.open(filepath) as img:
+                            width, height = img.size
+                        
+                        images.append({
+                            "filename": filename,
+                            "filepath": filepath,
+                            "size": stat.st_size,
+                            "modified": stat.st_mtime,
+                            "width": width,
+                            "height": height,
+                        })
+                    except Exception as e:
+                        logger.warning(f"Error reading image {filepath}: {e}")
+                        
+            # Sort by modification time (newest first)
+            images.sort(key=lambda x: x["modified"], reverse=True)
+            return images
+            
+        except Exception as e:
+            logger.error(f"Error listing images: {e}")
+            return []
+
+    def save_uploaded_image(self, file_storage, filename: str = None) -> Tuple[bool, str]:
+        """Save an uploaded image file."""
+        try:
+            settings = self.config.get("second_display.picture_viewer", {})
+            max_size = settings.get("max_file_size", 10485760)  # 10MB default
+            supported_formats = settings.get("supported_formats", ["jpg", "jpeg", "png", "bmp", "gif"])
+            
+            # Check file size
+            file_storage.seek(0, 2)  # Seek to end
+            file_size = file_storage.tell()
+            file_storage.seek(0)  # Reset to beginning
+            
+            if file_size > max_size:
+                return False, f"File too large. Maximum size is {max_size // 1048576}MB"
+            
+            # Use provided filename or the original filename
+            if not filename:
+                filename = secure_filename(file_storage.filename)
+                
+            if not filename:
+                return False, "Invalid filename"
+                
+            # Check file extension
+            ext = filename.lower().split('.')[-1] if '.' in filename else ''
+            if ext not in supported_formats:
+                return False, f"Unsupported format. Supported: {', '.join(supported_formats)}"
+            
+            # Create unique filename if file already exists
+            base_name = '.'.join(filename.split('.')[:-1])
+            counter = 1
+            while os.path.exists(os.path.join(self.image_dir, filename)):
+                filename = f"{base_name}_{counter}.{ext}"
+                counter += 1
+            
+            filepath = os.path.join(self.image_dir, filename)
+            
+            # Save the file
+            file_storage.save(filepath)
+            
+            # Verify it's a valid image by trying to open it
+            try:
+                with Image.open(filepath) as img:
+                    img.verify()
+            except Exception as e:
+                os.remove(filepath)  # Clean up invalid file
+                return False, f"Invalid image file: {str(e)}"
+            
+            logger.info(f"Image saved successfully: {filename}")
+            return True, filename
+            
+        except Exception as e:
+            logger.error(f"Error saving uploaded image: {e}")
+            return False, f"Upload failed: {str(e)}"
+
+    def delete_image(self, filename: str) -> Tuple[bool, str]:
+        """Delete an uploaded image."""
+        try:
+            filepath = os.path.join(self.image_dir, secure_filename(filename))
+            
+            if not os.path.exists(filepath):
+                return False, "Image not found"
+                
+            if not filepath.startswith(self.image_dir):
+                return False, "Invalid file path"
+                
+            os.remove(filepath)
+            logger.info(f"Image deleted: {filename}")
+            
+            # If this was the current image, stop picture mode
+            if self.current_image and self.current_image == filename:
+                self.stop_picture_mode()
+                
+            return True, "Image deleted successfully"
+            
+        except Exception as e:
+            logger.error(f"Error deleting image: {e}")
+            return False, f"Delete failed: {str(e)}"
+
+    def load_image(self, filename: str, display_size: Tuple[int, int] = (128, 128)) -> Optional[Image.Image]:
+        """Load and process an image for display."""
+        try:
+            filepath = os.path.join(self.image_dir, secure_filename(filename))
+            
+            if not os.path.exists(filepath):
+                logger.error(f"Image not found: {filepath}")
+                return None
+                
+            settings = self.config.get("second_display.picture_viewer", {})
+            fit_mode = settings.get("fit_mode", "contain")
+            bg_color = tuple(settings.get("background_color", [0, 0, 0]))
+            brightness = settings.get("brightness_adjustment", 1.0)
+            auto_rotate = settings.get("auto_rotate", True)
+            
+            # Load the image
+            with Image.open(filepath) as img:
+                # Handle transparency
+                if img.mode in ('RGBA', 'LA'):
+                    background = Image.new('RGB', img.size, bg_color)
+                    background.paste(img, mask=img.split()[-1])  # Use alpha channel as mask
+                    img = background
+                elif img.mode != 'RGB':
+                    img = img.convert('RGB')
+                
+                # Auto-rotate based on EXIF data
+                if auto_rotate and hasattr(img, '_getexif'):
+                    try:
+                        exif = img._getexif()
+                        if exif is not None:
+                            orientation = exif.get(274)  # Orientation tag
+                            if orientation == 3:
+                                img = img.rotate(180, expand=True)
+                            elif orientation == 6:
+                                img = img.rotate(270, expand=True)
+                            elif orientation == 8:
+                                img = img.rotate(90, expand=True)
+                    except Exception:
+                        pass  # Ignore EXIF errors
+                
+                # Resize based on fit mode
+                if fit_mode == "stretch":
+                    img = img.resize(display_size, Image.Resampling.LANCZOS)
+                elif fit_mode == "cover":
+                    img.thumbnail(display_size, Image.Resampling.LANCZOS)
+                    # Center crop to exact size
+                    left = (img.width - display_size[0]) // 2
+                    top = (img.height - display_size[1]) // 2
+                    img = img.crop((left, top, left + display_size[0], top + display_size[1]))
+                elif fit_mode == "center":
+                    # Center the image without scaling
+                    background = Image.new('RGB', display_size, bg_color)
+                    paste_x = (display_size[0] - img.width) // 2
+                    paste_y = (display_size[1] - img.height) // 2
+                    background.paste(img, (paste_x, paste_y))
+                    img = background
+                else:  # contain (default)
+                    # Maintain aspect ratio, fit within display
+                    img.thumbnail(display_size, Image.Resampling.LANCZOS)
+                    background = Image.new('RGB', display_size, bg_color)
+                    paste_x = (display_size[0] - img.width) // 2
+                    paste_y = (display_size[1] - img.height) // 2
+                    background.paste(img, (paste_x, paste_y))
+                    img = background
+                
+                # Apply brightness adjustment
+                if brightness != 1.0:
+                    import numpy as np
+                    img_array = np.array(img, dtype=np.float32)
+                    img_array *= brightness
+                    img_array = np.clip(img_array, 0, 255).astype(np.uint8)
+                    img = Image.fromarray(img_array)
+                
+                return img
+                
+        except Exception as e:
+            logger.error(f"Error loading image {filename}: {e}")
+            return None
+
+    def start_picture_mode(self, filename: str = None) -> bool:
+        """Start picture viewing mode."""
+        try:
+            if filename:
+                self.current_image = filename
+                self.picture_active = True
+                logger.info(f"Picture mode started with image: {filename}")
+                return True
+            else:
+                # Start with first available image
+                images = self.get_uploaded_images()
+                if images:
+                    self.current_image = images[0]["filename"]
+                    self.picture_active = True
+                    self.image_list = [img["filename"] for img in images]
+                    self.current_index = 0
+                    logger.info(f"Picture mode started with first image: {self.current_image}")
+                    return True
+                else:
+                    logger.error("No images available for picture mode")
+                    return False
+                    
+        except Exception as e:
+            logger.error(f"Error starting picture mode: {e}")
+            return False
+
+    def stop_picture_mode(self) -> bool:
+        """Stop picture viewing mode."""
+        try:
+            self.picture_active = False
+            self.current_image = None
+            self.stop_slideshow()
+            logger.info("Picture mode stopped")
+            return True
+        except Exception as e:
+            logger.error(f"Error stopping picture mode: {e}")
+            return False
+
+    def start_slideshow(self) -> bool:
+        """Start automatic slideshow."""
+        try:
+            images = self.get_uploaded_images()
+            if len(images) < 2:
+                logger.warning("Need at least 2 images for slideshow")
+                return False
+                
+            self.image_list = [img["filename"] for img in images]
+            self.current_index = 0
+            self.slideshow_active = True
+            self.picture_active = True
+            
+            if self.slideshow_thread and self.slideshow_thread.is_alive():
+                self.slideshow_active = False
+                self.slideshow_thread.join()
+            
+            self.slideshow_thread = threading.Thread(target=self._slideshow_worker, daemon=True)
+            self.slideshow_thread.start()
+            
+            logger.info("Slideshow started")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error starting slideshow: {e}")
+            return False
+
+    def stop_slideshow(self) -> bool:
+        """Stop automatic slideshow."""
+        try:
+            self.slideshow_active = False
+            if self.slideshow_thread and self.slideshow_thread.is_alive():
+                self.slideshow_thread.join(timeout=2)
+            logger.info("Slideshow stopped")
+            return True
+        except Exception as e:
+            logger.error(f"Error stopping slideshow: {e}")
+            return False
+
+    def _slideshow_worker(self):
+        """Background worker for slideshow."""
+        while self.slideshow_active and self.image_list:
+            try:
+                settings = self.config.get("second_display.picture_viewer", {})
+                interval = settings.get("slideshow_interval", 10)
+                
+                time.sleep(interval)
+                
+                if self.slideshow_active:
+                    self.current_index = (self.current_index + 1) % len(self.image_list)
+                    self.current_image = self.image_list[self.current_index]
+                    logger.debug(f"Slideshow advanced to: {self.current_image}")
+                    
+            except Exception as e:
+                logger.error(f"Error in slideshow worker: {e}")
+                break
+
+    def get_current_image(self) -> Optional[str]:
+        """Get the currently displayed image filename."""
+        return self.current_image if self.picture_active else None
+
+    def next_image(self) -> bool:
+        """Switch to next image."""
+        try:
+            if not self.image_list:
+                images = self.get_uploaded_images()
+                self.image_list = [img["filename"] for img in images]
+                
+            if not self.image_list:
+                return False
+                
+            self.current_index = (self.current_index + 1) % len(self.image_list)
+            self.current_image = self.image_list[self.current_index]
+            return True
+        except Exception as e:
+            logger.error(f"Error switching to next image: {e}")
+            return False
+
+    def previous_image(self) -> bool:
+        """Switch to previous image."""
+        try:
+            if not self.image_list:
+                images = self.get_uploaded_images()
+                self.image_list = [img["filename"] for img in images]
+                
+            if not self.image_list:
+                return False
+                
+            self.current_index = (self.current_index - 1) % len(self.image_list)
+            self.current_image = self.image_list[self.current_index]
+            return True
+        except Exception as e:
+            logger.error(f"Error switching to previous image: {e}")
+            return False
+
+    def is_active(self) -> bool:
+        """Check if picture mode is active."""
+        return self.picture_active
+
+    def get_status(self) -> Dict:
+        """Get current picture viewer status."""
+        return {
+            "active": self.picture_active,
+            "current_image": self.current_image,
+            "slideshow_active": self.slideshow_active,
+            "total_images": len(self.get_uploaded_images()),
+            "enabled": self.config.get("second_display.picture_viewer.enabled", True),
+        }
 
 
 class TextDisplay:
@@ -1098,8 +1479,8 @@ class ClockDisplay:
             "ticks": graphics.Color(*clock_config.get("tick_color", [128, 128, 128])),
         }
 
-    def update_display(self, arcade_manager=None) -> None:
-        """Update the clock display with current time, or show arcade mode status."""
+    def update_display(self, arcade_manager=None, picture_viewer=None) -> None:
+        """Update the clock display with current time, or show arcade/picture mode status."""
         if not self.canvas:
             return
 
@@ -1107,9 +1488,14 @@ class ClockDisplay:
         if not self.config.get("second_display.enabled", False):
             return
 
-        # Check if arcade mode is active
+        # Check if arcade mode is active (highest priority)
         if arcade_manager and arcade_manager.arcade_active:
             self._draw_arcade_mode_status(arcade_manager)
+            return
+
+        # Check if picture viewer is active (second priority)
+        if picture_viewer and picture_viewer.is_active():
+            self._draw_picture_mode(picture_viewer)
             return
 
         # Get current time
@@ -1128,6 +1514,11 @@ class ClockDisplay:
                 self._draw_arcade_selection(arcade_manager, colors)
             else:
                 self._draw_arcade_unavailable(colors)
+        elif display_type == "picture":
+            if picture_viewer:
+                self._draw_picture_viewer_selection(picture_viewer, colors)
+            else:
+                self._draw_picture_unavailable(colors)
         elif display_type == "clock":
             self._draw_analog_clock(colors, now)
 
@@ -2099,6 +2490,129 @@ class ClockDisplay:
             self.canvas, self.small_font, text_x, text_y, colors["date"], text
         )
 
+    def _draw_picture_mode(self, picture_viewer) -> None:
+        """Draw the current image in picture mode."""
+        current_image = picture_viewer.get_current_image()
+        if not current_image:
+            self._draw_picture_unavailable({})
+            return
+
+        try:
+            # Load and process the image
+            image = picture_viewer.load_image(current_image, (self.width, self.height))
+            if not image:
+                self._draw_picture_unavailable({})
+                return
+
+            # Convert PIL image to matrix display
+            rgb_array = image.load()
+            for y in range(image.height):
+                for x in range(image.width):
+                    r, g, b = rgb_array[x, y]
+                    color = graphics.Color(r, g, b)
+                    self._set_pixel(x, y, color)
+
+            # Draw image info overlay if slideshow is active
+            if picture_viewer.slideshow_active:
+                # Draw slideshow indicator
+                indicator_color = graphics.Color(255, 255, 0)
+                # Small dot in top-right corner
+                for i in range(3):
+                    for j in range(3):
+                        self._set_pixel(self.width - 5 + i, 2 + j, indicator_color)
+
+        except Exception as e:
+            logger.error(f"Error drawing picture: {e}")
+            self._draw_picture_unavailable({})
+
+    def _draw_picture_viewer_selection(self, picture_viewer, colors: dict) -> None:
+        """Draw picture viewer selection interface."""
+        images = picture_viewer.get_uploaded_images()
+
+        if not images:
+            self._draw_picture_unavailable(colors)
+            return
+
+        # Clear background
+        bg_color = graphics.Color(16, 0, 32)
+        for x in range(self.width):
+            for y in range(self.height):
+                self._set_pixel(x, y, bg_color)
+
+        # Draw title
+        title_color = graphics.Color(255, 128, 255)
+        text = "PICTURES"
+        text_x = self.center_x - len(text) * 3
+        text_y = 15
+        graphics.DrawText(
+            self.canvas, self.small_font, text_x, text_y, title_color, text
+        )
+
+        # Show image count
+        image_text = f"{len(images)} Images"
+        text_x = self.center_x - len(image_text) * 3
+        text_y = 30
+        graphics.DrawText(
+            self.canvas, self.small_font, text_x, text_y, colors.get("digital", graphics.Color(255, 255, 255)), image_text
+        )
+
+        # Show recent images
+        y_pos = 50
+        for i, img in enumerate(images[:5]):  # Show first 5 images
+            filename = img["filename"]
+            if len(filename) > 15:
+                filename = filename[:12] + "..."
+            
+            text_x = 5
+            graphics.DrawText(
+                self.canvas,
+                self.small_font,
+                text_x,
+                y_pos,
+                colors.get("markers", graphics.Color(128, 128, 255)),
+                filename,
+            )
+            y_pos += 12
+
+        # Draw instruction
+        instruction = "Upload via web"
+        text_x = self.center_x - len(instruction) * 3
+        text_y = self.height - 15
+        graphics.DrawText(
+            self.canvas, self.small_font, text_x, text_y, colors.get("date", graphics.Color(128, 180, 255)), instruction
+        )
+
+    def _draw_picture_unavailable(self, colors: dict) -> None:
+        """Draw message when picture viewer is not available."""
+        # Clear background
+        bg_color = graphics.Color(32, 16, 32)
+        for x in range(self.width):
+            for y in range(self.height):
+                self._set_pixel(x, y, bg_color)
+
+        # Draw error message
+        error_color = graphics.Color(255, 128, 255)
+        text = "PICTURES"
+        text_x = self.center_x - len(text) * 3
+        text_y = self.center_y - 15
+        graphics.DrawText(
+            self.canvas, self.small_font, text_x, text_y, error_color, text
+        )
+
+        text = "NO IMAGES"
+        text_x = self.center_x - len(text) * 3
+        text_y = self.center_y
+        graphics.DrawText(
+            self.canvas, self.small_font, text_x, text_y, error_color, text
+        )
+
+        text = "Upload via web"
+        text_x = self.center_x - len(text) * 3
+        text_y = self.center_y + 15
+        graphics.DrawText(
+            self.canvas, self.small_font, text_x, text_y, colors.get("date", graphics.Color(128, 128, 128)), text
+        )
+
 
 class UserManager:
     """Manages user authentication with hashed passwords and JSON storage."""
@@ -2278,6 +2792,7 @@ class BecaTicker:
         self.user_manager = UserManager()
         self.calendar_manager = CalendarManager(self.config)
         self.arcade_manager = ArcadeManager(self.config)
+        self.picture_viewer = PictureViewer(self.config)
 
         # Initialize single chain matrix with 5x1 text panels
         self.matrix = self._create_matrix()
@@ -2713,6 +3228,147 @@ class BecaTicker:
                 logger.error(f"Error getting ROMs: {e}")
                 return jsonify({"status": "error", "message": str(e)}), 500
 
+        # Picture viewer API endpoints
+        @self.app.route("/api/pictures/status", methods=["GET"])
+        @login_required
+        def picture_status():
+            try:
+                status = self.picture_viewer.get_status()
+                return jsonify({"status": "success", **status})
+            except Exception as e:
+                logger.error(f"Error getting picture status: {e}")
+                return jsonify({"status": "error", "message": str(e)}), 500
+
+        @self.app.route("/api/pictures/list", methods=["GET"])
+        @login_required
+        def list_pictures():
+            try:
+                images = self.picture_viewer.get_uploaded_images()
+                return jsonify({"status": "success", "images": images})
+            except Exception as e:
+                logger.error(f"Error listing pictures: {e}")
+                return jsonify({"status": "error", "message": str(e)}), 500
+
+        @self.app.route("/api/pictures/upload", methods=["POST"])
+        @login_required
+        def upload_picture():
+            try:
+                if 'file' not in request.files:
+                    return jsonify({"status": "error", "message": "No file provided"}), 400
+                
+                file = request.files['file']
+                if file.filename == '':
+                    return jsonify({"status": "error", "message": "No file selected"}), 400
+                
+                success, message = self.picture_viewer.save_uploaded_image(file)
+                if success:
+                    return jsonify({"status": "success", "message": f"Image uploaded: {message}"})
+                else:
+                    return jsonify({"status": "error", "message": message}), 400
+                    
+            except Exception as e:
+                logger.error(f"Error uploading picture: {e}")
+                return jsonify({"status": "error", "message": str(e)}), 500
+
+        @self.app.route("/api/pictures/delete", methods=["POST"])
+        @login_required
+        def delete_picture():
+            try:
+                data = request.get_json()
+                if not data or 'filename' not in data:
+                    return jsonify({"status": "error", "message": "Filename required"}), 400
+                
+                success, message = self.picture_viewer.delete_image(data['filename'])
+                if success:
+                    return jsonify({"status": "success", "message": message})
+                else:
+                    return jsonify({"status": "error", "message": message}), 400
+                    
+            except Exception as e:
+                logger.error(f"Error deleting picture: {e}")
+                return jsonify({"status": "error", "message": str(e)}), 500
+
+        @self.app.route("/api/pictures/start", methods=["POST"])
+        @login_required
+        def start_picture_viewer():
+            try:
+                data = request.get_json()
+                filename = data.get('filename') if data else None
+                
+                if self.picture_viewer.start_picture_mode(filename):
+                    return jsonify({"status": "success", "message": "Picture viewer started"})
+                else:
+                    return jsonify({"status": "error", "message": "Failed to start picture viewer"}), 400
+                    
+            except Exception as e:
+                logger.error(f"Error starting picture viewer: {e}")
+                return jsonify({"status": "error", "message": str(e)}), 500
+
+        @self.app.route("/api/pictures/stop", methods=["POST"])
+        @login_required
+        def stop_picture_viewer():
+            try:
+                if self.picture_viewer.stop_picture_mode():
+                    return jsonify({"status": "success", "message": "Picture viewer stopped"})
+                else:
+                    return jsonify({"status": "error", "message": "Failed to stop picture viewer"}), 400
+                    
+            except Exception as e:
+                logger.error(f"Error stopping picture viewer: {e}")
+                return jsonify({"status": "error", "message": str(e)}), 500
+
+        @self.app.route("/api/pictures/slideshow/start", methods=["POST"])
+        @login_required
+        def start_slideshow():
+            try:
+                if self.picture_viewer.start_slideshow():
+                    return jsonify({"status": "success", "message": "Slideshow started"})
+                else:
+                    return jsonify({"status": "error", "message": "Failed to start slideshow"}), 400
+                    
+            except Exception as e:
+                logger.error(f"Error starting slideshow: {e}")
+                return jsonify({"status": "error", "message": str(e)}), 500
+
+        @self.app.route("/api/pictures/slideshow/stop", methods=["POST"])
+        @login_required
+        def stop_slideshow():
+            try:
+                if self.picture_viewer.stop_slideshow():
+                    return jsonify({"status": "success", "message": "Slideshow stopped"})
+                else:
+                    return jsonify({"status": "error", "message": "Failed to stop slideshow"}), 400
+                    
+            except Exception as e:
+                logger.error(f"Error stopping slideshow: {e}")
+                return jsonify({"status": "error", "message": str(e)}), 500
+
+        @self.app.route("/api/pictures/next", methods=["POST"])
+        @login_required
+        def next_picture():
+            try:
+                if self.picture_viewer.next_image():
+                    return jsonify({"status": "success", "message": "Switched to next image"})
+                else:
+                    return jsonify({"status": "error", "message": "No images available"}), 400
+                    
+            except Exception as e:
+                logger.error(f"Error switching to next picture: {e}")
+                return jsonify({"status": "error", "message": str(e)}), 500
+
+        @self.app.route("/api/pictures/previous", methods=["POST"])
+        @login_required
+        def previous_picture():
+            try:
+                if self.picture_viewer.previous_image():
+                    return jsonify({"status": "success", "message": "Switched to previous image"})
+                else:
+                    return jsonify({"status": "error", "message": "No images available"}), 400
+                    
+            except Exception as e:
+                logger.error(f"Error switching to previous picture: {e}")
+                return jsonify({"status": "error", "message": str(e)}), 500
+
         @self.app.route("/api/auth/status")
         def auth_status():
             authenticated = session.get("authenticated", False)
@@ -2898,7 +3554,7 @@ class BecaTicker:
 
                 # Update both displays (draws to the canvas)
                 self.text_display.update_display()
-                self.clock_display.update_display(self.arcade_manager)
+                self.clock_display.update_display(self.arcade_manager, self.picture_viewer)
 
                 # Swap the canvas buffers once
                 canvas = self.matrix.SwapOnVSync(canvas)
