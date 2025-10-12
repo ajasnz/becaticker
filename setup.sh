@@ -96,20 +96,92 @@ EOF
 
 # Create arcade mode control scripts
 mkdir -p "$SCRIPT_DIR/arcade"
-cat > "$SCRIPT_DIR/arcade/start_arcade.sh" << 'EOF'
+cat > "$SCRIPT_DIR/arcade/start_arcade.sh" << EOF
 #!/bin/bash
-# Start arcade mode - launches EmulationStation for the LED matrix
+# Start arcade mode script for BecaTicker
+# This script launches EmulationStation configured for the LED Matrix display
+
+# Set up logging
+LOG_FILE="/tmp/becaticker_arcade.log"
+exec 1> >(tee -a "\$LOG_FILE")
+exec 2>&1
+
+echo "\$(date): Starting BecaTicker Arcade Mode..."
+
+# Check if RetroPie is installed
+if [ ! -d "/opt/retropie" ] && [ ! -d "/home/$ACTUAL_USER/RetroPie" ]; then
+    echo "ERROR: RetroPie not found. Please install RetroPie first."
+    exit 1
+fi
+
+# Set environment variables for LED Matrix display
 export DISPLAY=:0
-cd /opt/retropie/supplementary/emulationstation
-sudo -u $USER ./emulationstation --windowed --resolution 128 128
+export XAUTHORITY="/home/$ACTUAL_USER/.Xauthority"
+
+# RetroPie paths
+RETROPIE_HOME="/home/$ACTUAL_USER/RetroPie"
+EMULATIONSTATION_PATH="/opt/retropie/supplementary/emulationstation/emulationstation"
+ES_SETTINGS_DIR="/opt/retropie/configs/all/emulationstation"
+
+# Check if EmulationStation exists
+if [ ! -f "\$EMULATIONSTATION_PATH" ]; then
+    echo "ERROR: EmulationStation not found at \$EMULATIONSTATION_PATH"
+    exit 1
+fi
+
+# Create ES settings directory if it doesn't exist
+mkdir -p "\$ES_SETTINGS_DIR"
+
+echo "Starting EmulationStation..."
+
+# Start EmulationStation with minimal options
+exec "\$EMULATIONSTATION_PATH" \\
+    --resolution 128 128 \\
+    --gamelist-only \\
+    --no-splash \\
+    --windowed \\
+    --debug
 EOF
 
 cat > "$SCRIPT_DIR/arcade/stop_arcade.sh" << 'EOF'
 #!/bin/bash
-# Stop arcade mode - kills all emulation processes
-pkill -f emulationstation
-pkill -f retroarch
-pkill -f runcommand
+# Stop arcade mode script for BecaTicker
+# This script stops EmulationStation and all related emulator processes
+
+# Set up logging
+LOG_FILE="/tmp/becaticker_arcade.log"
+exec 1> >(tee -a "\$LOG_FILE")
+exec 2>&1
+
+echo "\$(date): Stopping BecaTicker Arcade Mode..."
+
+# Function to kill processes by name
+kill_process() {
+    local process_name="\$1"
+    local pids=\$(pgrep -f "\$process_name" 2>/dev/null)
+    
+    if [ -n "\$pids" ]; then
+        echo "Stopping \$process_name processes: \$pids"
+        # Try graceful termination first
+        kill -TERM \$pids 2>/dev/null
+        sleep 2
+        
+        # Force kill if still running
+        local remaining=\$(pgrep -f "\$process_name" 2>/dev/null)
+        if [ -n "\$remaining" ]; then
+            echo "Force killing remaining \$process_name processes: \$remaining"
+            kill -KILL \$remaining 2>/dev/null
+        fi
+    fi
+}
+
+# Stop all emulator and EmulationStation processes
+kill_process "emulationstation"
+kill_process "retroarch"
+kill_process "runcommand"
+
+echo "Arcade mode stopped successfully"
+exit 0
 EOF
 
 chmod +x "$SCRIPT_DIR/arcade/start_arcade.sh"
