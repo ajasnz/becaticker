@@ -1,49 +1,8 @@
 {
-  "department_name": "PLATFORM 38 1/2",
-  "scrolling_messages": [
-    "Safe System Assessments | TIAs | ITS | Public Transport | Parking, Walking & Cycling",
-    "It is always possible to aglutenate multiple separate problems into a single complex interdependent solution. In most casesthis is a bad idea. - RFC 1925",
-    "It is easier to move a problem around (for example, by moving the problem to a different part of the overall network architecture) than it is to solve it. (6a) (corollary). It is always possible to add another level of indirection.",
-    "With sufficient thrust, pigs fly just fine. However, this is not necessarily a good idea.It is hard to be sure where they are going to land, and it could be dangerous sitting under them as they fly overhead. - RFC 1925"
-  ],
   "calendar_urls": [
     "https://www.officeholidays.com/ics-all/new-zealand",
     "https://outlook.office365.com/owa/calendar/83254b997f75435aa130c2a8992530b7@taplab.nz/70e7f863de554b62abcb884c9e7b1da85878165353884635813/calendar.ics"
   ],
-  "web_port": 5000,
-  "matrix_options": {
-    "rows": 64,
-    "cols": 64,
-    "chain_length": 5,
-    "parallel": 2,
-    "brightness": 40,
-    "gpio_mapping": "regular",
-    "gpio_slowdown": 4,
-    "hardware_mapping": "regular",
-    "pixel_mapper_config": "U-mapper;Rotate:180",
-    "chain2_length": 4,
-    "chain2_cols": 128,
-    "chain2_pixel_mapper": "Rotate:90"
-  },
-  "display_settings": {
-    "text_color": [
-      255,
-      255,
-      255
-    ],
-    "clock_color": [
-      0,
-      255,
-      0
-    ],
-    "background_color": [
-      0,
-      0,
-      0
-    ],
-    "scroll_speed": 0.5,
-    "calendar_refresh_minutes": 30
-  },
   "clock_settings": {
     "face_color": [
       64,
@@ -60,15 +19,15 @@
       255,
       0
     ],
-    "second_hand_color": [
-      255,
-      0,
-      0
-    ],
     "number_color": [
       0,
       255,
       255
+    ],
+    "second_hand_color": [
+      255,
+      0,
+      0
     ],
     "tick_color": [
       128,
@@ -76,12 +35,62 @@
       128
     ]
   },
+  "department_name": "PLATFORM 38 1/2",
+  "display_lines": [],
+  "display_settings": {
+    "background_color": [
+      0,
+      0,
+      0
+    ],
+    "calendar_refresh_minutes": 30,
+    "clock_color": [
+      0,
+      255,
+      0
+    ],
+    "scroll_speed": 0.5,
+    "text_color": [
+      255,
+      255,
+      255
+    ]
+  },
+  "matrix_options": {
+    "brightness": 40,
+    "chain2_cols": 128,
+    "chain2_length": 4,
+    "chain2_pixel_mapper": "Rotate:90",
+    "chain_length": 5,
+    "cols": 64,
+    "gpio_mapping": "regular",
+    "gpio_slowdown": 4,
+    "hardware_mapping": "regular",
+    "parallel": 2,
+    "pixel_mapper_config": "U-mapper;Rotate:180",
+    "rows": 64
+  },
+  "scrolling_messages": [
+    "Safe System Assessments | TIAs | ITS | Public Transport | Parking, Walking & Cycling",
+    "It is always possible to aglutenate multiple separate problems into a single complex interdependent solution. In most casesthis is a bad idea. - RFC 1925",
+    "It is easier to move a problem around (for example, by moving the problem to a different part of the overall network architecture) than it is to solve it. (6a) (corollary). It is always possible to add another level of indirection.",
+    "With sufficient thrust, pigs fly just fine. However, this is not necessarily a good idea.It is hard to be sure where they are going to land, and it could be dangerous sitting under them as they fly overhead. - RFC 1925"
+  ],
   "second_display": {
-    "enabled": true,
-    "type": "clock",
-    "layout": "2x2",
     "chain": 2,
+    "enabled": true,
+    "layout": "2x2",
     "settings": {
+      "date_color": [
+        0,
+        255,
+        255
+      ],
+      "digital_color": [
+        255,
+        255,
+        255
+      ],
       "face_color": [
         64,
         64,
@@ -97,33 +106,25 @@
         255,
         0
       ],
-      "second_hand_color": [
-        255,
-        0,
-        0
-      ],
       "number_color": [
         0,
         255,
         255
       ],
+      "second_hand_color": [
+        255,
+        0,
+        0
+      ],
+      "show_date": true,
+      "show_digital": true,
       "tick_color": [
         128,
         128,
         128
-      ],
-      "show_digital": true,
-      "digital_color": [
-        255,
-        255,
-        255
-      ],
-      "show_date": true,
-      "date_color": [
-        0,
-        255,
-        255
       ]
-    }
-  }
+    },
+    "type": "clock"
+  },
+  "web_port": 5000
 }
