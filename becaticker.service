@@ -9,9 +9,9 @@ Type=simple
 Restart=always
 RestartSec=10
 User=root
-WorkingDirectory=/home/pi/becaticker
-Environment=PATH=/home/pi/becaticker/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-ExecStart=/home/pi/becaticker/venv/bin/python /home/pi/becaticker/becaticker.py
+WorkingDirectory=/home/becaticker/becaticker
+Environment=PATH=/home/becaticker/becaticker/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=/home/becaticker/becaticker/venv/bin/python /home/becaticker/becaticker/becaticker.py
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=becaticker

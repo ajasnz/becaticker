@@ -15,9 +15,9 @@ exec 2>&1
 echo "$(date): Starting BecaTicker Arcade Mode..."
 
 # Configuration
-ARCADE_DIR="/home/becaticker/arcade"
-ROM_DIR="/home/becaticker/test_roms"
-BECATICKER_DIR="/home/becaticker"
+ARCADE_DIR="/home/becaticker/becaticker/arcade"
+ROM_DIR="/home/becaticker/becaticker/test_roms"
+BECATICKER_DIR="/home/becaticker/becaticker"
 
 # Create ROM directory if it doesn't exist
 mkdir -p "$ROM_DIR/mame"
