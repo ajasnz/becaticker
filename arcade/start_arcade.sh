@@ -19,7 +19,7 @@ fi
 export DISPLAY=:0
 export XAUTHORITY="/home/becaticker/.Xauthority"
 
-# RetroPie paths
+# RetroPie paths (using becaticker user)
 RETROPIE_HOME="/home/becaticker/RetroPie"
 EMULATIONSTATION_PATH="/opt/retropie/supplementary/emulationstation/emulationstation"
 ES_SETTINGS_DIR="/opt/retropie/configs/all/emulationstation"
@@ -77,22 +77,55 @@ pkill -f emulationstation 2>/dev/null || true
 # Wait a moment for cleanup
 sleep 2
 
-# Set up framebuffer for LED matrix display (if available)
-if [ -f "/dev/fb1" ]; then
+# Check for available framebuffers and configure SDL
+if [ -c "/dev/fb1" ]; then
     export FRAMEBUFFER="/dev/fb1"
+    export SDL_VIDEODRIVER=fbcon
+    export SDL_FBDEV=/dev/fb1
     echo "Using framebuffer /dev/fb1 for LED matrix"
+elif [ -c "/dev/fb0" ]; then
+    export FRAMEBUFFER="/dev/fb0"
+    export SDL_VIDEODRIVER=fbcon
+    export SDL_FBDEV=/dev/fb0
+    echo "Using framebuffer /dev/fb0 as fallback"
+else
+    # No framebuffer available, try X11 or dummy driver
+    echo "No framebuffer devices found, trying alternative display methods"
+    if [ -n "$DISPLAY" ]; then
+        export SDL_VIDEODRIVER=x11
+        echo "Using X11 display driver"
+    else
+        export SDL_VIDEODRIVER=dummy
+        echo "WARNING: Using dummy video driver - no display output"
+    fi
 fi
-
-# Configure video mode for small display
-export SDL_VIDEODRIVER=fbcon
-export SDL_FBDEV=/dev/fb1
 
 echo "Starting EmulationStation..."
 
-# Start EmulationStation with minimal options
-exec "$EMULATIONSTATION_PATH" \
-    --resolution 128 128 \
-    --gamelist-only \
-    --no-splash \
-    --windowed \
-    --debug
+# Try different EmulationStation startup approaches
+echo "Attempting to start EmulationStation with LED matrix configuration..."
+
+# First attempt: Try with minimal configuration for LED matrix
+if "$EMULATIONSTATION_PATH" --resolution 128 128 --gamelist-only --no-splash --windowed --debug 2>&1 | tee -a "$LOG_FILE"; then
+    echo "EmulationStation started successfully"
+else
+    echo "First attempt failed, trying alternative configuration..."
+    
+    # Second attempt: Try with different video driver
+    export SDL_VIDEODRIVER=software
+    if "$EMULATIONSTATION_PATH" --resolution 128 128 --no-splash --debug 2>&1 | tee -a "$LOG_FILE"; then
+        echo "EmulationStation started with software renderer"
+    else
+        echo "Second attempt failed, trying basic configuration..."
+        
+        # Third attempt: Try basic configuration
+        export SDL_VIDEODRIVER=dummy
+        if "$EMULATIONSTATION_PATH" --no-splash --debug 2>&1 | tee -a "$LOG_FILE"; then
+            echo "EmulationStation started with dummy driver (no display)"
+        else
+            echo "ERROR: All EmulationStation startup attempts failed"
+            echo "Check log file: $LOG_FILE"
+            exit 1
+        fi
+    fi
+fi

@@ -475,18 +475,28 @@ class ArcadeManager:
             logger.error(f"ROM directory checked: {self.rom_directory}")
             return False
 
-        # Check arcade script exists
+        # Check arcade script exists - try production first, then development
         arcade_script = os.path.join(
             os.path.dirname(__file__), "arcade", "start_arcade.sh"
         )
+        dev_arcade_script = os.path.join(
+            os.path.dirname(__file__), "arcade", "start_arcade_dev.sh"
+        )
+
         logger.info(f"Looking for arcade script: {arcade_script}")
 
+        # Use development script if production script doesn't exist or isn't working
         if not os.path.exists(arcade_script):
-            logger.error(f"Arcade script not found: {arcade_script}")
-            logger.error(
-                "Run setup.sh to create arcade scripts, or create the arcade directory manually"
-            )
-            return False
+            logger.warning(f"Production arcade script not found: {arcade_script}")
+            if os.path.exists(dev_arcade_script):
+                arcade_script = dev_arcade_script
+                logger.info(f"Using development arcade script: {dev_arcade_script}")
+            else:
+                logger.error(f"No arcade scripts found")
+                logger.error(
+                    "Run setup.sh to create arcade scripts, or create the arcade directory manually"
+                )
+                return False
 
         # Check if script is executable
         if not os.access(arcade_script, os.X_OK):
@@ -494,36 +504,59 @@ class ArcadeManager:
             logger.error("Fix with: chmod +x arcade/start_arcade.sh")
             return False
 
-        try:
-            logger.info("Starting arcade script...")
-            # Start EmulationStation for the LED matrix
-            self.arcade_process = subprocess.Popen(
-                [arcade_script],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                preexec_fn=os.setsid,
+        def try_start_script(script_path):
+            """Try to start an arcade script and return success status."""
+            try:
+                logger.info(f"Starting arcade script: {script_path}")
+                process = subprocess.Popen(
+                    [script_path],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    preexec_fn=os.setsid,
+                )
+
+                # Give the process a moment to start
+                time.sleep(2)
+
+                # Check if process started successfully
+                if process.poll() is None:
+                    return process, True
+                else:
+                    # Process exited immediately, check for errors
+                    stdout, stderr = process.communicate()
+                    logger.warning(f"Arcade script {script_path} exited immediately")
+                    logger.warning(f"Script stdout: {stdout.decode()}")
+                    logger.warning(f"Script stderr: {stderr.decode()}")
+                    return None, False
+
+            except Exception as e:
+                logger.warning(f"Failed to start script {script_path}: {e}")
+                return None, False
+
+        # Try the primary script first
+        self.arcade_process, success = try_start_script(arcade_script)
+
+        if success:
+            self.arcade_active = True
+            self.last_activity = time.time()
+            logger.info("Arcade mode started successfully")
+            return True
+
+        # If primary script failed and we haven't tried the dev script yet, try it
+        if arcade_script != dev_arcade_script and os.path.exists(dev_arcade_script):
+            logger.info(
+                "Primary script failed, trying development script as fallback..."
             )
+            self.arcade_process, success = try_start_script(dev_arcade_script)
 
-            # Give the process a moment to start
-            time.sleep(1)
-
-            # Check if process started successfully
-            if self.arcade_process.poll() is None:
+            if success:
                 self.arcade_active = True
                 self.last_activity = time.time()
-                logger.info("Arcade mode started successfully")
+                logger.info("Arcade mode started successfully with development script")
                 return True
-            else:
-                # Process exited immediately, check for errors
-                stdout, stderr = self.arcade_process.communicate()
-                logger.error(f"Arcade script exited immediately")
-                logger.error(f"Script stdout: {stdout.decode()}")
-                logger.error(f"Script stderr: {stderr.decode()}")
-                return False
 
-        except Exception as e:
-            logger.error(f"Failed to start arcade mode: {e}")
-            return False
+        logger.error("All arcade script attempts failed")
+        return False
 
     def stop_arcade_mode(self) -> bool:
         """Stop arcade mode."""
@@ -532,12 +565,23 @@ class ArcadeManager:
             return True
 
         try:
-            # Stop EmulationStation and all emulators
+            # Stop EmulationStation and all emulators - try production first, then development
             stop_script = os.path.join(
                 os.path.dirname(__file__), "arcade", "stop_arcade.sh"
             )
+            dev_stop_script = os.path.join(
+                os.path.dirname(__file__), "arcade", "stop_arcade_dev.sh"
+            )
+
+            script_to_use = None
             if os.path.exists(stop_script):
-                subprocess.run([stop_script], check=True)
+                script_to_use = stop_script
+            elif os.path.exists(dev_stop_script):
+                script_to_use = dev_stop_script
+                logger.info("Using development stop script")
+
+            if script_to_use:
+                subprocess.run([script_to_use], check=True)
 
             if self.arcade_process:
                 try:
