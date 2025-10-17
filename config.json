@@ -173,14 +173,7 @@
       ],
       "fade_old_position": true
     },
-    "type": "clock",
-    "arcade_mode": {
-      "enabled": true,
-      "rom_directory": "./test_roms",
-      "emulator_command": "/opt/retropie/supplementary/emulationstation/emulationstation",
-      "display_resolution": "128x128",
-      "auto_return_timeout": 300
-    }
+    "type": "clock"
   },
   "clock_settings": {
     "face_color": [

@@ -8,50 +8,68 @@ A single-chain RGB LED matrix display system featuring:
 """
 
 import argparse
+import glob
 import hashlib
 import json
 import logging
 import math
 import os
 import secrets
-import signal
-import subprocess
 import sys
 import threading
 import time
 from datetime import datetime, timedelta, timezone
 from functools import wraps
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 
+import io
 import requests
 from dateutil import parser as date_parser
 from flask import Flask, jsonify, render_template, request, session, redirect, url_for
 from icalendar import Calendar
 from PIL import Image, ImageDraw, ImageFont
 from werkzeug.utils import secure_filename
-import io
-import glob
 
 # Add the RGB matrix library path
 sys.path.append(
     os.path.join(os.path.dirname(__file__), "hzeller", "bindings", "python")
 )
 
+# Configure logging
+def setup_logging(log_level: str = "INFO") -> None:
+    """Setup logging configuration for production use."""
+    log_level_map = {
+        "DEBUG": logging.DEBUG,
+        "INFO": logging.INFO,
+        "WARNING": logging.WARNING,
+        "ERROR": logging.ERROR,
+        "CRITICAL": logging.CRITICAL,
+    }
+    
+    level = log_level_map.get(log_level.upper(), logging.INFO)
+    
+    # Create logs directory if it doesn't exist
+    os.makedirs("logs", exist_ok=True)
+    
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=[
+            logging.FileHandler("logs/becaticker.log"),
+            logging.StreamHandler(sys.stdout),
+        ],
+    )
+
+setup_logging()
+logger = logging.getLogger(__name__)
+
 try:
     from rgbmatrix import RGBMatrix, RGBMatrixOptions, graphics
 except ImportError as e:
     logger.error(f"Failed to import RGB matrix library: {e}")
     logger.error("Please ensure the RGB matrix library is properly installed.")
-    logger.error("Run './build_rgb_matrix.sh' to build the library.")
+    logger.error("Run 'sudo ./setup.sh' to build the library.")
     sys.exit(1)
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[logging.FileHandler("becaticker.log"), logging.StreamHandler(sys.stdout)],
-)
-logger = logging.getLogger(__name__)
 
 
 class Config:
@@ -135,13 +153,6 @@ class Config:
                     "smooth_seconds": True,  # Smooth second hand movement
                     "glow_effect": False,  # Subtle glow around hands
                     "fade_old_position": True,  # Fade effect when hands move
-                },
-                "arcade_mode": {
-                    "enabled": False,
-                    "rom_directory": "/home/becaticker/RetroPie/roms",
-                    "emulator_command": "/opt/retropie/supplementary/emulationstation/emulationstation",
-                    "display_resolution": "128x128",
-                    "auto_return_timeout": 300,  # Return to clock after 5 minutes of inactivity
                 },
                 "picture_viewer": {
                     "enabled": True,
@@ -1360,8 +1371,8 @@ class ClockDisplay:
             "ticks": graphics.Color(*clock_config.get("tick_color", [128, 128, 128])),
         }
 
-    def update_display(self, arcade_manager=None, picture_viewer=None) -> None:
-        """Update the clock display with current time, or show arcade/picture mode status."""
+    def update_display(self, picture_viewer=None) -> None:
+        """Update the clock display with current time, or show picture mode status."""
         if not self.canvas:
             return
 
@@ -1369,12 +1380,7 @@ class ClockDisplay:
         if not self.config.get("second_display.enabled", False):
             return
 
-        # Check if arcade mode is active (highest priority)
-        if arcade_manager and arcade_manager.arcade_active:
-            self._draw_arcade_mode_status(arcade_manager)
-            return
-
-        # Check if picture viewer is active (second priority)
+        # Check if picture viewer is active (high priority)
         if picture_viewer and picture_viewer.is_active():
             self._draw_picture_mode(picture_viewer)
             return
@@ -1390,11 +1396,6 @@ class ClockDisplay:
 
         if display_type == "test":
             self._draw_test_pattern(colors)
-        elif display_type == "arcade":
-            if arcade_manager:
-                self._draw_arcade_selection(arcade_manager, colors)
-            else:
-                self._draw_arcade_unavailable(colors)
         elif display_type == "picture":
             if picture_viewer:
                 self._draw_picture_viewer_selection(picture_viewer, colors)
@@ -2570,7 +2571,6 @@ class BecaTicker:
         self.config = Config()
         self.user_manager = UserManager()
         self.calendar_manager = CalendarManager(self.config)
-        self.arcade_manager = ArcadeManager(self.config)
         self.picture_viewer = PictureViewer(self.config)
 
         # Initialize single chain matrix with 5x1 text panels
@@ -2919,93 +2919,6 @@ class BecaTicker:
                 )
             else:
                 return redirect("/login")
-
-        # Arcade Mode API Routes
-        @self.app.route("/api/arcade/status", methods=["GET"])
-        @login_required
-        def get_arcade_status():
-            try:
-                status = self.arcade_manager.check_status()
-                roms = self.arcade_manager.get_available_roms()
-
-                return jsonify(
-                    {
-                        "status": "success",
-                        "arcade": {
-                            "active": status["active"],
-                            "retropie_installed": status["retropie_installed"],
-                            "roms_available": status["roms_available"],
-                            "available_systems": list(roms.keys()),
-                            "rom_details": roms,
-                        },
-                    }
-                )
-            except Exception as e:
-                logger.error(f"Error getting arcade status: {e}")
-                return jsonify({"status": "error", "message": str(e)}), 500
-
-        @self.app.route("/api/arcade/start", methods=["POST"])
-        @login_required
-        def start_arcade():
-            try:
-                if self.arcade_manager.start_arcade_mode():
-                    return jsonify(
-                        {
-                            "status": "success",
-                            "message": "Arcade mode started successfully",
-                        }
-                    )
-                else:
-                    return (
-                        jsonify(
-                            {
-                                "status": "error",
-                                "message": "Failed to start arcade mode",
-                            }
-                        ),
-                        400,
-                    )
-            except Exception as e:
-                logger.error(f"Error starting arcade mode: {e}")
-                return jsonify({"status": "error", "message": str(e)}), 500
-
-        @self.app.route("/api/arcade/stop", methods=["POST"])
-        @login_required
-        def stop_arcade():
-            try:
-                if self.arcade_manager.stop_arcade_mode():
-                    return jsonify(
-                        {
-                            "status": "success",
-                            "message": "Arcade mode stopped successfully",
-                        }
-                    )
-                else:
-                    return (
-                        jsonify(
-                            {"status": "error", "message": "Failed to stop arcade mode"}
-                        ),
-                        400,
-                    )
-            except Exception as e:
-                logger.error(f"Error stopping arcade mode: {e}")
-                return jsonify({"status": "error", "message": str(e)}), 500
-
-        @self.app.route("/api/arcade/roms", methods=["GET"])
-        @login_required
-        def get_roms():
-            try:
-                roms = self.arcade_manager.get_available_roms()
-                return jsonify(
-                    {
-                        "status": "success",
-                        "roms": roms,
-                        "total_roms": sum(len(rom_list) for rom_list in roms.values()),
-                    }
-                )
-            except Exception as e:
-                logger.error(f"Error getting ROMs: {e}")
-                return jsonify({"status": "error", "message": str(e)}), 500
 
         # Picture viewer API endpoints
         @self.app.route("/api/pictures/status", methods=["GET"])
@@ -3388,9 +3301,7 @@ class BecaTicker:
 
                 # Update both displays (draws to the canvas)
                 self.text_display.update_display()
-                self.clock_display.update_display(
-                    self.arcade_manager, self.picture_viewer
-                )
+                self.clock_display.update_display(self.picture_viewer)
 
                 # Swap the canvas buffers once
                 canvas = self.matrix.SwapOnVSync(canvas)
