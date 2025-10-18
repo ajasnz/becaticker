@@ -15,6 +15,7 @@ import logging
 import math
 import os
 import secrets
+import socket
 import sys
 import threading
 import time
@@ -2587,6 +2588,7 @@ class BecaTicker:
         # Threading
         self.running = False
         self.display_thread = None
+        self.startup_info_shown = False
 
         # Web interface
         self.app = Flask(__name__)
@@ -2615,6 +2617,75 @@ class BecaTicker:
             options.show_refresh_rate = False  # Don't show refresh rate counter
 
         return RGBMatrix(options=options)
+
+    def _get_local_ip(self) -> str:
+        """Get the local IP address of this device."""
+        try:
+            # Connect to a remote server to determine which interface is used
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+                # This doesn't actually connect, just determines routing
+                s.connect(("8.8.8.8", 80))
+                local_ip = s.getsockname()[0]
+                return local_ip
+        except Exception:
+            try:
+                # Fallback: get hostname IP
+                hostname = socket.gethostname()
+                local_ip = socket.gethostbyname(hostname)
+                if local_ip != "127.0.0.1":
+                    return local_ip
+            except Exception:
+                pass
+            
+            # Final fallback
+            return "localhost"
+
+    def _show_startup_info(self) -> None:
+        """Display IP address and port on 5x1 display for 30 seconds."""
+        try:
+            local_ip = self._get_local_ip()
+            web_port = self.config.get("web_port", 5000)
+            
+            # Create startup message
+            startup_message = f"Web Interface: http://{local_ip}:{web_port}"
+            logger.info(f"Displaying startup info: {startup_message}")
+            
+            # Create a temporary canvas for startup display
+            canvas = self.matrix.CreateFrameCanvas()
+            
+            # Get font and color
+            font = self.text_display.text_font
+            color_config = self.config.get("display_settings", {}).get("text_color", [0, 255, 0])
+            color = graphics.Color(color_config[0], color_config[1], color_config[2])
+            
+            # Display the startup info for 30 seconds
+            end_time = time.time() + 30
+            scroll_pos = 320  # Start from right edge
+            
+            while time.time() < end_time and self.running:
+                canvas.Clear()
+                
+                # Draw the startup message with scrolling
+                graphics.DrawText(
+                    canvas, 
+                    font, 
+                    scroll_pos, 
+                    32,  # Y position (middle of 64-pixel high display)
+                    color, 
+                    startup_message
+                )
+                
+                # Update scroll position for smooth scrolling
+                scroll_pos -= 2
+                if scroll_pos < -len(startup_message) * 8:  # Rough character width estimate
+                    scroll_pos = 320
+                
+                # Swap canvas
+                canvas = self.matrix.SwapOnVSync(canvas)
+                time.sleep(0.05)  # Smooth scrolling
+                
+        except Exception as e:
+            logger.error(f"Error displaying startup info: {e}")
 
     def _setup_web_routes(self) -> None:
         """Set up Flask web interface routes."""
@@ -3262,6 +3333,11 @@ class BecaTicker:
         """Start the display system."""
         logger.info("Starting BecaTicker display system")
         self.running = True
+
+        # Show startup info first (blocks for 30 seconds)
+        if not self.startup_info_shown:
+            self._show_startup_info()
+            self.startup_info_shown = True
 
         # Start display update thread
         self.display_thread = threading.Thread(target=self._display_loop, daemon=True)

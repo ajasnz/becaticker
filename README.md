@@ -41,6 +41,7 @@ The system provides a complete web-based management interface, real-time calenda
 - **Analog Clock**: Customizable clock with multiple hand styles and colors
 - **Picture Viewer**: Image display with slideshow capabilities
 - **Dynamic Content**: Real-time updates without service interruption
+- **Startup Display**: Automatic IP address and port display for 30 seconds on startup
 
 ### Management & Control
 - **Web Interface**: Complete browser-based configuration and control
@@ -202,12 +203,16 @@ sudo ./setup.sh
 ```
 
 ### Post-Installation Setup
-1. **Access web interface**: `http://[raspberry-pi-ip]:5000`
-2. **Login**: Username: `admin`, Password: `becaticker123`
-3. **⚠️ Change password immediately** via Settings page
-4. **Configure displays**: Set brightness, colors, text speed
-5. **Add calendar URLs**: Enter iCal/ICS URLs for event display
-6. **Test functionality**: Verify all displays are working
+1. **Start the service**: `sudo systemctl start becaticker`
+2. **Watch startup display**: The 5×1 display will show the web interface URL for 30 seconds
+3. **Access web interface**: Use the displayed URL or `http://[raspberry-pi-ip]:5000`
+4. **Login**: Username: `admin`, Password: `becaticker123`
+5. **⚠️ Change password immediately** via Settings page
+6. **Configure displays**: Set brightness, colors, text speed
+7. **Add calendar URLs**: Enter iCal/ICS URLs for event display
+8. **Test functionality**: Verify all displays are working
+
+**Note**: The startup display showing the web interface URL only appears once each time the service starts, making it easy to locate the web interface without needing to check network settings.
 
 ## Configuration
 
