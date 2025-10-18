@@ -1,5 +1,7 @@
 # BecaTicker - LED Matrix Display Controller
 
+> This readme was AI generated fromm the code base. It has not yet been checked for accuracy. ***USE COMMON SENSE***.
+
 Professional RGB LED matrix display system for Raspberry Pi featuring dual-chain configuration with web-based management.
 
 ## Table of Contents
@@ -201,7 +203,7 @@ sudo ./setup.sh
 
 ### Post-Installation Setup
 1. **Access web interface**: `http://[raspberry-pi-ip]:5000`
-2. **Login**: Username: `admin`, Password: `admin`
+2. **Login**: Username: `admin`, Password: `becaticker123`
 3. **⚠️ Change password immediately** via Settings page
 4. **Configure displays**: Set brightness, colors, text speed
 5. **Add calendar URLs**: Enter iCal/ICS URLs for event display
@@ -574,7 +576,7 @@ sudo ufw status
 ```
 
 **Login Issues**:
-- Default credentials: admin/admin
+- Default credentials: admin/becaticker123
 - Reset password via direct config file edit
 - Check session management in logs
 
