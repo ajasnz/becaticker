@@ -36,6 +36,7 @@ sys.path.append(
     os.path.join(os.path.dirname(__file__), "hzeller", "bindings", "python")
 )
 
+
 # Configure logging
 def setup_logging(log_level: str = "INFO") -> None:
     """Setup logging configuration for production use."""
@@ -46,12 +47,12 @@ def setup_logging(log_level: str = "INFO") -> None:
         "ERROR": logging.ERROR,
         "CRITICAL": logging.CRITICAL,
     }
-    
+
     level = log_level_map.get(log_level.upper(), logging.INFO)
-    
+
     # Create logs directory if it doesn't exist
     os.makedirs("logs", exist_ok=True)
-    
+
     logging.basicConfig(
         level=level,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -60,6 +61,7 @@ def setup_logging(log_level: str = "INFO") -> None:
             logging.StreamHandler(sys.stdout),
         ],
     )
+
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -2636,7 +2638,7 @@ class BecaTicker:
                     return local_ip
             except Exception:
                 pass
-            
+
             # Final fallback
             return "localhost"
 
@@ -2645,45 +2647,49 @@ class BecaTicker:
         try:
             local_ip = self._get_local_ip()
             web_port = self.config.get("web_port", 5000)
-            
+
             # Create startup message
             startup_message = f"Web Interface: http://{local_ip}:{web_port}"
             logger.info(f"Displaying startup info: {startup_message}")
-            
+
             # Create a temporary canvas for startup display
             canvas = self.matrix.CreateFrameCanvas()
-            
+
             # Get font and color
             font = self.text_display.text_font
-            color_config = self.config.get("display_settings", {}).get("text_color", [0, 255, 0])
+            color_config = self.config.get("display_settings", {}).get(
+                "text_color", [0, 255, 0]
+            )
             color = graphics.Color(color_config[0], color_config[1], color_config[2])
-            
+
             # Display the startup info for 30 seconds
             end_time = time.time() + 30
             scroll_pos = 320  # Start from right edge
-            
+
             while time.time() < end_time and self.running:
                 canvas.Clear()
-                
+
                 # Draw the startup message with scrolling
                 graphics.DrawText(
-                    canvas, 
-                    font, 
-                    scroll_pos, 
+                    canvas,
+                    font,
+                    scroll_pos,
                     32,  # Y position (middle of 64-pixel high display)
-                    color, 
-                    startup_message
+                    color,
+                    startup_message,
                 )
-                
+
                 # Update scroll position for smooth scrolling
                 scroll_pos -= 2
-                if scroll_pos < -len(startup_message) * 8:  # Rough character width estimate
+                if (
+                    scroll_pos < -len(startup_message) * 8
+                ):  # Rough character width estimate
                     scroll_pos = 320
-                
+
                 # Swap canvas
                 canvas = self.matrix.SwapOnVSync(canvas)
                 time.sleep(0.05)  # Smooth scrolling
-                
+
         except Exception as e:
             logger.error(f"Error displaying startup info: {e}")
 

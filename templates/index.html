@@ -637,24 +637,6 @@
                 <button class="btn btn-secondary" onclick="refreshEvents()">Refresh Events</button>
             </div>
 
-            <!-- Arcade Mode Controls -->
-            <div class="section">
-                <h2>🎮 Arcade Mode</h2>
-                <div class="status-item" style="margin-bottom: 20px;">
-                    <div class="status-value" id="arcade-status">Unknown</div>
-                    <div class="status-label">Arcade Status</div>
-                </div>
-                <button class="btn" id="arcade-start-btn" onclick="startArcadeMode()" disabled>Start Arcade
-                    Mode</button>
-                <button class="btn btn-secondary" id="arcade-stop-btn" onclick="stopArcadeMode()" disabled>⏹️ Stop
-                    Arcade Mode</button>
-                <button class="btn btn-secondary" onclick="checkArcadeStatus()">🔄 Check Status</button>
-                <p style="margin-top: 15px; color: #6c757d; font-size: 0.9rem;">
-                    <strong>Note:</strong> Arcade mode will temporarily replace the clock display with gaming interface.
-                    The text display on Chain 1 will continue to operate normally.
-                </p>
-            </div>
-
             <!-- Picture Viewer Controls -->
             <div class="section">
                 <h2>🖼️ Picture Viewer</h2>
@@ -708,8 +690,7 @@
                 </div>
 
                 <p style="margin-top: 15px; color: #6c757d; font-size: 0.9rem;">
-                    <strong>Note:</strong> Picture viewer will temporarily replace the clock display. Arcade mode takes
-                    priority over picture viewer.
+                    <strong>Note:</strong> Picture viewer will temporarily replace the clock display.
                 </p>
             </div>
 
@@ -1077,11 +1058,9 @@
             loadAllSettings();
             refreshEvents();
             updateClock();
-            checkArcadeStatus();
             checkPictureStatus();
             setInterval(updateClock, 1000);
             setInterval(refreshEvents, 30000); // Refresh events every 30 seconds
-            setInterval(checkArcadeStatus, 5000); // Check arcade status every 5 seconds
             setInterval(checkPictureStatus, 5000); // Check picture status every 5 seconds
         });
 
@@ -1843,84 +1822,6 @@
                 loadMessages();
                 loadCalendars();
                 showAlert('Settings reset to defaults! Remember to save.');
-            }
-        }
-
-        async function checkArcadeStatus() {
-            try {
-                const response = await fetch('/api/arcade/status');
-                if (!response.ok) throw new Error('Failed to check arcade status');
-
-                const status = await response.json();
-                const statusElement = document.getElementById('arcade-status');
-                const startBtn = document.getElementById('arcade-start-btn');
-                const stopBtn = document.getElementById('arcade-stop-btn');
-
-                if (status.active) {
-                    statusElement.textContent = 'Active';
-                    statusElement.style.color = '#28a745';
-                    startBtn.disabled = true;
-                    stopBtn.disabled = false;
-                } else {
-                    statusElement.textContent = 'Inactive';
-                    statusElement.style.color = '#6c757d';
-                    startBtn.disabled = false;
-                    stopBtn.disabled = true;
-                }
-
-                // Enable/disable buttons based on configuration
-                if (!status.enabled) {
-                    startBtn.disabled = true;
-                    startBtn.title = 'Arcade mode is disabled in configuration';
-                }
-
-            } catch (error) {
-                console.error('Error checking arcade status:', error);
-                document.getElementById('arcade-status').textContent = 'Error';
-            }
-        }
-
-        async function startArcadeMode() {
-            try {
-                showAlert('Starting arcade mode...');
-                const response = await fetch('/api/arcade/start', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
-                });
-
-                if (!response.ok) throw new Error('Failed to start arcade mode');
-
-                const result = await response.json();
-                showAlert('Arcade mode started successfully! The clock display is now available for gaming.');
-                checkArcadeStatus();
-
-            } catch (error) {
-                console.error('Error starting arcade mode:', error);
-                showAlert('Failed to start arcade mode: ' + error.message, 'error');
-            }
-        }
-
-        async function stopArcadeMode() {
-            try {
-                showAlert('Stopping arcade mode...');
-                const response = await fetch('/api/arcade/stop', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
-                });
-
-                if (!response.ok) throw new Error('Failed to stop arcade mode');
-
-                const result = await response.json();
-                showAlert('Arcade mode stopped. Clock display has been restored.');
-                checkArcadeStatus();
-
-            } catch (error) {
-                console.error('Error stopping arcade mode:', error);
-                showAlert('Failed to stop arcade mode: ' + error.message, 'error');
             }
         }
 
