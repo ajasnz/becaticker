@@ -416,6 +416,32 @@ htop
 df -h
 ```
 
+### Auto-Update Feature
+BecaTicker automatically pulls the latest code updates on each service restart:
+
+```bash
+# Updates happen automatically on service start/restart
+sudo systemctl restart becaticker
+
+# View update logs
+tail -f logs/update.log
+
+# Manual update (without service restart)
+./update.sh
+
+# Disable auto-update (modify systemd service)
+sudo systemctl edit becaticker
+# Add: ExecStartPre=
+```
+
+**Auto-Update Behavior:**
+- Checks for updates on every service start
+- Backs up configuration before updating
+- Updates Python dependencies if requirements.txt changed
+- Rebuilds RGB matrix library if needed
+- Falls back gracefully if update fails
+- Preserves local configuration files
+
 ### Configuration Updates
 ```bash
 # Backup current config

@@ -68,6 +68,7 @@ systemctl enable becaticker
 echo "Setting file permissions..."
 chown -R $ACTUAL_USER:$ACTUAL_USER "$SCRIPT_DIR"
 chmod +x "$SCRIPT_DIR/run.sh"
+chmod +x "$SCRIPT_DIR/update.sh"
 
 # Production security recommendations
 echo ""
