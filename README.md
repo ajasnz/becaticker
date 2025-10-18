@@ -421,31 +421,38 @@ htop
 df -h
 ```
 
-### Auto-Update Feature
-BecaTicker automatically pulls the latest code updates on each service restart:
+### Manual Updates
+Auto-update has been disabled for stability. Updates can be performed manually when needed:
 
 ```bash
-# Updates happen automatically on service start/restart
+# Manual update process
+cd /path/to/becaticker
+git pull origin main
+
+# Update Python dependencies if needed
+source venv/bin/activate
+pip install -r requirements.txt --upgrade
+
+# Rebuild RGB matrix library if needed
+cd hzeller
+make clean
+make build-python PYTHON="../venv/bin/python"
+cd bindings/python
+../../../venv/bin/python setup.py install
+cd ../..
+
+# Restart service to apply changes
 sudo systemctl restart becaticker
 
-# View update logs
+# View update logs (if update.sh was used previously)
 tail -f logs/update.log
-
-# Manual update (without service restart)
-./update.sh
-
-# Disable auto-update (modify systemd service)
-sudo systemctl edit becaticker
-# Add: ExecStartPre=
 ```
 
-**Auto-Update Behavior:**
-- Checks for updates on every service start
-- Backs up configuration before updating
-- Updates Python dependencies if requirements.txt changed
-- Rebuilds RGB matrix library if needed
-- Falls back gracefully if update fails
-- Preserves local configuration files
+**Manual Update Benefits:**
+- Full control over when updates are applied
+- Ability to review changes before applying
+- No risk of automatic updates breaking the service
+- Can test updates in development before production
 
 ### Configuration Updates
 ```bash
